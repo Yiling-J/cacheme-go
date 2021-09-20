@@ -1,0 +1,325 @@
+{{"//nolint"}}
+{{"package cacheme"}}
+
+import (
+        "time"
+        "bytes"
+	"text/template"
+	"context"
+	"errors"
+	"sync"
+	"fmt"
+	"strconv"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/vmihailenco/msgpack/v5"
+	"github.com/Yiling-J/cacheme-go/cacheme"
+	{{range .Imports}}
+	"{{.}}"
+	{{end}}
+)
+
+type Client struct {
+     	{{range .Stores}}
+	{{ $NodeName := .Name | FirstLower  }}
+	{{.Name}}CacheStore *{{$NodeName}}Cache
+	{{end}}
+	redis *redis.Client
+}
+
+func New(redis *redis.Client) *Client {
+     client := Client{redis: redis}
+     {{range .Stores}}
+     client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone()
+     client.{{.Name}}CacheStore.SetClient(redis)
+     {{end}}
+     return &client
+}
+
+func (c *Client) NewPipeline() *cacheme.CachePipeline {
+	return cacheme.NewPipeline(c.redis)
+
+}
+
+var stores = []cacheme.CacheStore{
+	{{range .Stores}}
+	{{.Name}}CacheStore,
+	{{end}}
+}
+
+{{ $Prefix := .Prefix  }}
+
+{{range .Stores}}
+
+{{ $NodeName := .Name | FirstLower  }}
+type {{$NodeName}}Cache struct {
+     Fetch func(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.ToType}}, error)
+     tag string
+     once sync.Once
+     memo *cacheme.RedisMemoLock
+     redis *redis.Client
+}
+
+type {{.Name}}Promise struct {
+	executed     chan bool
+	redisPromise *redis.StringCmd
+	result       {{.ToType}}
+	error        error
+	store        *{{$NodeName}}Cache
+	ctx          context.Context
+}
+
+func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {
+	defer cp.Wg.Done()
+	var t {{.ToType}}
+	cacheme := p.store.memo
+
+	<-cp.Executed
+	value, err := p.redisPromise.Bytes()
+	if err == nil {
+		err = msgpack.Unmarshal(value, &t)
+		p.result, p.error = t, err
+		return
+	}
+
+	resourceLock, err := cacheme.Lock(p.ctx, key)
+	if err != nil {
+		p.error = err
+		return
+	}
+
+	if resourceLock {
+		value, err := p.store.Fetch(
+		p.ctx,
+		{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+		if err != nil {
+			p.error = err
+			return
+		}
+		p.result = value
+		packed, err := msgpack.Marshal(value)
+		if err == nil {
+			cacheme.SetCache(p.ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})
+			cacheme.AddGroup(p.ctx, p.store.Group(), key)
+		}
+		p.error = err
+		return
+	}
+
+	res, err := cacheme.Wait(p.ctx, key)
+	if err == nil {
+		err = msgpack.Unmarshal(res, &t)
+	}
+	p.result, p.error = t, err
+}
+
+func (p *{{.Name}}Promise) Result() ({{.ToType}}, error) {
+	return p.result, p.error
+}
+
+var {{.Name}}CacheStore = &{{$NodeName}}Cache{tag: "{{.Name}}"}
+
+func (s *{{$NodeName}}Cache) SetClient(c *redis.Client) {
+     s.redis = c
+}
+
+func (s *{{$NodeName}}Cache) Clone() *{{$NodeName}}Cache {
+     new := *s
+     return &new
+}
+
+func (s *{{$NodeName}}Cache) KeyTemplate() string {
+     return "{{.Key}}" + ":{{.Version}}"
+}
+
+func (s *{{$NodeName}}Cache) Key(m map[string]string) (string, error) {
+     t := template.Must(template.New("").Parse(s.KeyTemplate()))
+     t = t.Option("missingkey=zero")
+     var tpl bytes.Buffer
+     err := t.Execute(&tpl, m)
+     return tpl.String(), err
+}
+
+func (s *{{$NodeName}}Cache) Group() string {
+	return "{{$Prefix}}" + ":group:" + s.tag + ":{{.Version}}"
+}
+
+func (s *{{$NodeName}}Cache) versionedGroup(v int) string {
+	return "{{$Prefix}}" + ":group:" + s.tag + ":" + strconv.Itoa(v)
+}
+
+func (s *{{$NodeName}}Cache) AddMemoLock() error {
+     lock, err := cacheme.NewRedisMemoLock(context.TODO(), "{{$Prefix}}", s.redis, s.tag, 5*time.Second)
+     if err != nil {
+     	return err
+     }
+
+     s.memo = lock
+     return nil
+}
+
+func (s *{{$NodeName}}Cache) Initialized() bool {
+	return s.Fetch != nil
+}
+
+func (s *{{$NodeName}}Cache) Tag() string {
+	return s.tag
+}
+
+func (s *{{$NodeName}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) (*{{.Name}}Promise, error) {
+	params := make(map[string]string)
+
+	{{range .Vars}}
+	params["{{.}}"] = {{.}}
+	{{end}}
+
+
+	key, err := s.Key(params)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheme := s.memo
+
+	promise := &{{.Name}}Promise{
+		executed: pp.Executed,
+		ctx:      ctx,
+		store:    s,
+	}
+
+	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
+	promise.redisPromise = wait
+	pp.Wg.Add(1)
+	go promise.WaitExecute(
+	pp, key, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+	return promise, nil
+}
+
+func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.ToType}}, error) {
+
+     s.once.Do(func() {
+		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "{{$Prefix}}", s.redis, s.tag, 5*time.Second)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		s.memo = lock
+     })
+
+     params := make(map[string]string)
+     {{range .Vars}}
+     params["{{.}}"] = {{.}}
+     {{end}}
+
+     var t {{.ToType}}
+
+     key, err := s.Key(params)
+     if err != nil {
+     	return t, err
+     }
+
+     memo := s.memo
+
+     res, err := memo.GetCached(ctx, key)
+     if err == nil {
+	err = msgpack.Unmarshal(res, &t)
+	return t, err
+     }
+
+     if err != redis.Nil {
+	return t, errors.New("")
+     }
+
+     resourceLock, err := memo.Lock(ctx, key)
+     if err != nil {
+	return t, err
+     }
+
+     if resourceLock {
+	value, err := s.Fetch(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+	if err != nil {
+	   return value, err
+	}
+	packed, err := msgpack.Marshal(value)
+	if err == nil {
+		memo.SetCache(ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})
+		memo.AddGroup(ctx, s.Group(), key)
+	}
+	return value, err
+     }
+
+     res, err = memo.Wait(ctx, key)
+     if err == nil {
+	err = msgpack.Unmarshal(res, &t)
+	return t, err
+     }
+     return t, err
+}
+
+func (s *{{$NodeName}}Cache) Update(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) error {
+
+     params := make(map[string]string)
+     {{range .Vars}}
+     params["{{.}}"] = {{.}}
+     {{end}}
+
+     key, err := s.Key(params)
+     if err != nil {
+     	return err
+     }
+     
+     value, err := s.Fetch(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+     if err != nil {
+     	return err
+     }
+     packed, err := msgpack.Marshal(value)
+     if err == nil {
+	s.memo.SetCache(ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})
+	s.memo.AddGroup(ctx, s.Group(), key)
+    }
+    return err
+}
+
+func (s *{{$NodeName}}Cache) Invalid(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) error {
+
+     params := make(map[string]string)
+     {{range .Vars}}
+     params["{{.}}"] = {{.}}
+     {{end}}
+
+     key, err := s.Key(params)
+     if err != nil {
+     	return err
+     }
+     return  s.redis.Del(ctx, key).Err()
+
+}
+
+func (s *{{$NodeName}}Cache) InvalidAll(ctx context.Context, version int) error {
+
+	group := s.versionedGroup(version)
+	iter := s.redis.SScan(ctx, group, 0, "", 200).Iterator()
+	invalids := []string{}
+	for iter.Next(ctx) {
+		invalids = append(invalids, iter.Val())
+		if len(invalids) == 600 {
+			err := s.redis.Unlink(ctx, invalids...).Err()
+			if err != nil {
+				fmt.Println(err)
+			}
+			invalids = []string{}
+		}
+	}
+	
+	if len(invalids) > 0 {
+	   err := s.redis.Unlink(ctx, invalids...).Err()
+	   if err != nil {
+	       return err
+	   }
+	   err = s.redis.Unlink(ctx, group).Err()
+	   return err
+	}
+	return nil
+}
+
+{{end}}

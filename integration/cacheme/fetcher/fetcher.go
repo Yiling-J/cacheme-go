@@ -1,0 +1,115 @@
+package fetcher
+
+import (
+	"context"
+	"errors"
+	"sync"
+
+	"github.com/Yiling-J/cacheme-go/integration/cacheme"
+	"github.com/Yiling-J/cacheme-go/integration/model"
+)
+
+var (
+	Tester                    string
+	SimpleCacheStoreCounter   int
+	FooCacheStoreCounter      int
+	FooPCacheStoreCounter     int
+	FooMapCacheStoreCounter   int
+	FooListCacheStoreCounter  int
+	FooListPCacheStoreCounter int
+
+	mu sync.Mutex
+)
+
+func Setup() {
+
+	cacheme.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
+		mu.Lock()
+		SimpleCacheStoreCounter++
+		mu.Unlock()
+
+		if ID == "" {
+			return "", nil
+		}
+		if ID == "E" {
+			return "", errors.New("")
+		}
+		return ID + Tester, nil
+	}
+
+	cacheme.FooCacheStore.Fetch = func(ctx context.Context, ID string) (model.Foo, error) {
+		mu.Lock()
+		FooCacheStoreCounter++
+		mu.Unlock()
+
+		if ID == "" {
+			return model.Foo{}, nil
+		}
+		if ID == "E" {
+			return model.Foo{}, errors.New("")
+		}
+		return model.Foo{
+			Name: ID + Tester,
+		}, nil
+	}
+
+	cacheme.FooPCacheStore.Fetch = func(ctx context.Context, ID string) (*model.Foo, error) {
+		mu.Lock()
+		FooPCacheStoreCounter++
+		mu.Unlock()
+
+		if ID == "" {
+			return nil, nil
+		}
+		if ID == "E" {
+			return nil, errors.New("")
+		}
+		return &model.Foo{
+			Name: ID + Tester,
+		}, nil
+	}
+
+	cacheme.FooMapCacheStore.Fetch = func(ctx context.Context, ID string) (map[string]string, error) {
+		mu.Lock()
+		FooMapCacheStoreCounter++
+		mu.Unlock()
+
+		if ID == "" {
+			return nil, nil
+		}
+		if ID == "E" {
+			return nil, errors.New("")
+		}
+		return map[string]string{"name": ID + Tester}, nil
+	}
+
+	cacheme.FooListCacheStore.Fetch = func(ctx context.Context, ID string) ([]model.Foo, error) {
+		mu.Lock()
+		FooListCacheStoreCounter++
+		mu.Unlock()
+
+		if ID == "" {
+			var zero []model.Foo
+			return zero, nil
+		}
+		if ID == "E" {
+			return []model.Foo{}, errors.New("")
+		}
+		return []model.Foo{{Name: ID + Tester}}, nil
+	}
+
+	cacheme.FooListPCacheStore.Fetch = func(ctx context.Context, ID string) ([]*model.Foo, error) {
+		mu.Lock()
+		FooListPCacheStoreCounter++
+		mu.Unlock()
+
+		if ID == "" {
+			var zero []*model.Foo
+			return zero, nil
+		}
+		if ID == "E" {
+			return []*model.Foo{}, errors.New("")
+		}
+		return []*model.Foo{{Name: ID + Tester}}, nil
+	}
+}

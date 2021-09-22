@@ -37,12 +37,16 @@ var (
 var generateCode = `
 package main
 
+import "os"
 import cm "github.com/Yiling-J/cacheme-go/cacheme"
 import schema "{{.}}/cacheme/schema"
 
 
 func main() {
-    cm.SchemaToStore(schema.Prefix, schema.Stores, schema.Imports)
+    err := cm.SchemaToStore(schema.Prefix, schema.Stores, schema.Imports, true)
+    if err != nil {
+        os.Exit(1)
+    }
 }
 
 `

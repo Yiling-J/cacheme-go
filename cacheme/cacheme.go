@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"go/format"
 	"io/ioutil"
@@ -104,10 +105,26 @@ type templateVar struct {
 	Prefix  string
 }
 
-func SchemaToStore(prefix string, stores []*StoreTemplate, imports []string) {
+func SchemaToStore(prefix string, stores []*StoreTemplate, imports []string, save bool) error {
+	patternMapping := make(map[string]bool)
+	nameMapping := make(map[string]bool)
 	for _, s := range stores {
 		vars := []string{}
 		kt := s.Key
+
+		if n, ok := nameMapping[s.Name]; ok {
+			fmt.Println("find duplicate name", n)
+			return errors.New("find duplicate name")
+		}
+		nameMapping[s.Name] = true
+
+		pattern := varRegex.ReplaceAllString(kt, "{}")
+		if _, ok := patternMapping[pattern]; ok {
+			fmt.Println("find duplicate pattern", pattern)
+			return errors.New("find duplicate pattern")
+		}
+		patternMapping[pattern] = true
+
 		matches := varRegex.FindAllStringSubmatch(kt, -1)
 		for _, v := range matches {
 			vars = append(vars, v[1])
@@ -121,7 +138,7 @@ func SchemaToStore(prefix string, stores []*StoreTemplate, imports []string) {
 	tmpl, err := template.New("store.tmpl").Funcs(funcMap).ParseFS(templateDir, "template/store.tmpl")
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		return err
 	}
 
 	b := &bytes.Buffer{}
@@ -139,12 +156,18 @@ func SchemaToStore(prefix string, stores []*StoreTemplate, imports []string) {
 
 	var buf []byte
 	if buf, err = format.Source(b.Bytes()); err != nil {
-		fmt.Println("formatting output:", err)
-		os.Exit(1)
+		fmt.Println("formating:", err)
+		return err
+	}
+
+	if !save {
+		fmt.Println(string(buf))
+		return nil
 	}
 
 	if err = ioutil.WriteFile("cacheme/store.go", buf, 0644); err != nil { //nolint
 		fmt.Println("writing go file:", err)
-		os.Exit(1)
+		return err
 	}
+	return nil
 }

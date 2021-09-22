@@ -50,6 +50,8 @@ func Setup() {
 		}
 		return model.Foo{
 			Name: ID + Tester,
+			Bar:  model.Bar{Name: ID + Tester + "bar"},
+			BarP: &model.Bar{Name: ID + Tester + "bar"},
 		}, nil
 	}
 
@@ -66,6 +68,8 @@ func Setup() {
 		}
 		return &model.Foo{
 			Name: ID + Tester,
+			Bar:  model.Bar{Name: ID + Tester + "bar"},
+			BarP: &model.Bar{Name: ID + Tester + "bar"},
 		}, nil
 	}
 
@@ -95,7 +99,8 @@ func Setup() {
 		if ID == "E" {
 			return []model.Foo{}, errors.New("")
 		}
-		return []model.Foo{{Name: ID + Tester}}, nil
+		return []model.Foo{{Name: ID + Tester, Bar: model.Bar{Name: ID + Tester + "bar"},
+			BarP: &model.Bar{Name: ID + Tester + "bar"}}}, nil
 	}
 
 	cacheme.FooListPCacheStore.Fetch = func(ctx context.Context, ID string) ([]*model.Foo, error) {
@@ -110,6 +115,7 @@ func Setup() {
 		if ID == "E" {
 			return []*model.Foo{}, errors.New("")
 		}
-		return []*model.Foo{{Name: ID + Tester}}, nil
+		return []*model.Foo{{Name: ID + Tester, Bar: model.Bar{Name: ID + Tester + "bar"},
+			BarP: &model.Bar{Name: ID + Tester + "bar"}}}, nil
 	}
 }

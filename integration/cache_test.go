@@ -57,14 +57,30 @@ func TestCacheType(t *testing.T) {
 			name: "zero value",
 		},
 		{
-			name:             "simple",
-			id:               "1",
-			expectedSimple:   "1",
-			expectedFooMap:   map[string]string{"name": "1"},
-			expectedFoo:      model.Foo{Name: "1"},
-			expectedFooP:     &model.Foo{Name: "1"},
-			expectedFooList:  []model.Foo{{Name: "1"}},
-			expectedFooListP: []*model.Foo{{Name: "1"}},
+			name:           "simple",
+			id:             "1",
+			expectedSimple: "1",
+			expectedFooMap: map[string]string{"name": "1"},
+			expectedFoo: model.Foo{
+				Name: "1",
+				Bar:  model.Bar{Name: "1bar"},
+				BarP: &model.Bar{Name: "1bar"},
+			},
+			expectedFooP: &model.Foo{
+				Name: "1",
+				Bar:  model.Bar{Name: "1bar"},
+				BarP: &model.Bar{Name: "1bar"},
+			},
+			expectedFooList: []model.Foo{{
+				Name: "1",
+				Bar:  model.Bar{Name: "1bar"},
+				BarP: &model.Bar{Name: "1bar"},
+			}},
+			expectedFooListP: []*model.Foo{{
+				Name: "1",
+				Bar:  model.Bar{Name: "1bar"},
+				BarP: &model.Bar{Name: "1bar"},
+			}},
 		},
 	}
 
@@ -115,7 +131,7 @@ func TestCacheType(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, tc.expectedFooListP, r6)
 
-			// test get with cache, counter should equal 1
+			// test get with cache, counter should be 1
 			r1, err = client.SimpleCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)
 			require.Equal(t, tc.expectedSimple, r1)
@@ -147,8 +163,62 @@ func TestCacheType(t *testing.T) {
 			require.Equal(t, 1, fetcher.FooListPCacheStoreCounter)
 
 			// test invalid cache
-			// test get again
+			err = client.SimpleCacheStore.InvalidAll(ctx, 1)
+			require.Nil(t, err)
+			err = client.FooCacheStore.InvalidAll(ctx, 1)
+			require.Nil(t, err)
+			err = client.FooMapCacheStore.InvalidAll(ctx, 1)
+			require.Nil(t, err)
+			err = client.FooPCacheStore.InvalidAll(ctx, 1)
+			require.Nil(t, err)
+			err = client.FooListCacheStore.InvalidAll(ctx, 1)
+			require.Nil(t, err)
+			err = client.FooListPCacheStore.InvalidAll(ctx, 1)
+			require.Nil(t, err)
+
+			// test get again,  counter should be 2 now
+			_, err = client.SimpleCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.SimpleCacheStoreCounter)
+
+			_, err = client.FooCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.FooCacheStoreCounter)
+
+			_, err = client.FooPCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.FooPCacheStoreCounter)
+
+			_, err = client.FooMapCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.FooMapCacheStoreCounter)
+
+			_, err = client.FooListCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.FooListCacheStoreCounter)
+
+			_, err = client.FooListPCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.FooListPCacheStoreCounter)
+
 			// test cache warm
+			err = client.SimpleCacheStore.InvalidAll(ctx, 1)
+			require.Nil(t, err)
+			fetcher.Tester = "test"
+			client.SimpleCacheStore.Update(ctx, "1")
+			r1, err = client.SimpleCacheStore.Get(ctx, "1")
+			require.Nil(t, err)
+			require.Equal(t, "1test", r1)
+			fetcher.Tester = ""
+			r1, err = client.SimpleCacheStore.Get(ctx, "1")
+			require.Nil(t, err)
+			require.Equal(t, "1test", r1)
+
+			client.SimpleCacheStore.Update(ctx, "1")
+			r1, err = client.SimpleCacheStore.Get(ctx, "1")
+			require.Nil(t, err)
+			require.Equal(t, "1", r1)
+
 		},
 		)
 	}

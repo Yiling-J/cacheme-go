@@ -44,6 +44,17 @@ func CachemeCluster() *cacheme.Client {
 }
 
 func CleanRedis() {
+	client := redis.NewClient(
+		&redis.Options{
+			Addr:     "localhost:6379",
+			Password: "",
+			DB:       0,
+		},
+	)
+	client.FlushAll(context.TODO())
+}
+
+func CleanRedisCluster() {
 
 	client := redis.NewClusterClient(
 		&redis.ClusterOptions{
@@ -56,13 +67,6 @@ func CleanRedis() {
 				":7005"},
 		},
 	)
-	// client := redis.NewClient(
-	// 	&redis.Options{
-	// 		Addr:     "localhost:6379",
-	// 		Password: "",
-	// 		DB:       0,
-	// 	},
-	// )
 	r := client.Ping(context.TODO())
 	fmt.Println(r.Result())
 	client.ReloadState(context.TODO())
@@ -83,7 +87,7 @@ func RestCounter() {
 	fetcher.SimpleCacheStoreCounter = 0
 }
 
-func TestCacheType(t *testing.T) {
+func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 	tests := []struct {
 		name             string
 		id               string
@@ -127,9 +131,7 @@ func TestCacheType(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			fetcher.Setup()
-			client := CachemeCluster()
-			defer CleanRedis()
+			defer cleanFunc()
 			RestCounter()
 			ctx := context.Background()
 
@@ -264,4 +266,16 @@ func TestCacheType(t *testing.T) {
 		},
 		)
 	}
+}
+
+func TestSingle(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	CacheTypeTest(t, client, CleanRedis)
+}
+
+func TestCluster(t *testing.T) {
+	fetcher.Setup()
+	client := CachemeCluster()
+	CacheTypeTest(t, client, CleanRedisCluster)
 }

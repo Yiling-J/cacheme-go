@@ -13,8 +13,6 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-const defaultSchema = "cacheme/schema"
-
 var schemaCode = `
 package schema
 
@@ -97,7 +95,7 @@ func initCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			if err := ioutil.WriteFile(target, buf, 0644); err != nil {
+			if err := ioutil.WriteFile(target, buf, 0600); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
@@ -148,7 +146,7 @@ func generateCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			if err := ioutil.WriteFile(target, buf, 0644); err != nil {
+			if err := ioutil.WriteFile(target, buf, 0600); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}

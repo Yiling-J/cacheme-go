@@ -249,7 +249,8 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			err = client.SimpleCacheStore.InvalidAll(ctx, 1)
 			require.Nil(t, err)
 			fetcher.Tester = "test"
-			client.SimpleCacheStore.Update(ctx, "1")
+			err = client.SimpleCacheStore.Update(ctx, "1")
+			require.Nil(t, err)
 			r1, err = client.SimpleCacheStore.Get(ctx, "1")
 			require.Nil(t, err)
 			require.Equal(t, "1test", r1)
@@ -258,7 +259,8 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Nil(t, err)
 			require.Equal(t, "1test", r1)
 
-			client.SimpleCacheStore.Update(ctx, "1")
+			err = client.SimpleCacheStore.Update(ctx, "1")
+			require.Nil(t, err)
 			r1, err = client.SimpleCacheStore.Get(ctx, "1")
 			require.Nil(t, err)
 			require.Equal(t, "1", r1)

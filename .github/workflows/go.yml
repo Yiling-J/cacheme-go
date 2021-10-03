@@ -34,6 +34,8 @@ jobs:
           - 7004:7004
           - 7005:7005
     steps:
+      - name: Setup Go
+        uses: actions/setup-go@v2
       - uses: actions/checkout@v2
       - name: Test
         run: go test -race -v ./...

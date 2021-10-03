@@ -94,7 +94,7 @@ func initCmd() *cobra.Command {
 				fmt.Println("formatting output:", err)
 				os.Exit(1)
 			}
-
+			// nolint: gosec
 			if err := ioutil.WriteFile(target, buf, 0644); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -145,7 +145,7 @@ func generateCmd() *cobra.Command {
 				fmt.Println("formatting output:", err)
 				os.Exit(1)
 			}
-
+			// nolint: gosec
 			if err := ioutil.WriteFile(target, buf, 0644); err != nil {
 				fmt.Println(err)
 				os.Exit(1)

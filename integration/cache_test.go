@@ -287,6 +287,59 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 
 			require.Equal(t, []string{"1", "2", "3", "4"}, results)
 			require.Equal(t, 3, fetcher.SimpleCacheStoreCounter)
+
+			// test mixed pipeline
+			fetcher.SimpleCacheStoreCounter = 0
+			fetcher.FooCacheStoreCounter = 0
+			pipeline = cachemeo.NewPipeline(client.Redis())
+			ids = []string{"5", "6", "7", "8"}
+			var pss []*cacheme.SimplePromise
+			var psf []*cacheme.FooPromise
+
+			for _, i := range ids {
+				if i == "5" || i == "7" {
+					promise, err := client.SimpleCacheStore.GetP(ctx, pipeline, i)
+					require.Nil(t, err)
+					pss = append(pss, promise)
+					continue
+				}
+
+				promisef, err := client.FooCacheStore.GetP(ctx, pipeline, i)
+				require.Nil(t, err)
+				psf = append(psf, promisef)
+			}
+			err = pipeline.Execute(ctx)
+			require.Nil(t, err)
+
+			var resultSimple []string
+			for _, promise := range pss {
+				r, err := promise.Result()
+				require.Nil(t, err)
+				resultSimple = append(resultSimple, r)
+			}
+			var resultFoo []model.Foo
+			for _, promise := range psf {
+				r, err := promise.Result()
+				require.Nil(t, err)
+				resultFoo = append(resultFoo, r)
+			}
+
+			require.Equal(t, []string{"5", "7"}, resultSimple)
+			require.Equal(t, 2, fetcher.SimpleCacheStoreCounter)
+
+			require.Equal(t, []model.Foo{
+				{
+					Name: "6",
+					Bar:  model.Bar{Name: "6bar"},
+					BarP: &model.Bar{Name: "6bar"},
+				},
+				{
+					Name: "8",
+					Bar:  model.Bar{Name: "8bar"},
+					BarP: &model.Bar{Name: "8bar"},
+				},
+			}, resultFoo)
+			require.Equal(t, 2, fetcher.FooCacheStoreCounter)
 		},
 		)
 	}

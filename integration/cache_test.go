@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	cachemeo "github.com/Yiling-J/cacheme-go/cacheme"
@@ -22,15 +23,55 @@ func Cacheme() *cacheme.Client {
 	))
 }
 
-func CleanRedis() {
-	client := redis.NewClient(
-		&redis.Options{
-			Addr:     "localhost:6379",
-			Password: "",
-			DB:       0,
+func CachemeCluster() *cacheme.Client {
+	client := redis.NewClusterClient(
+		&redis.ClusterOptions{
+			Addrs: []string{
+				":7000",
+				":7001",
+				":7002",
+				":7003",
+				":7004",
+				":7005",
+			},
 		},
 	)
-	client.FlushAll(context.TODO())
+	r := client.Ping(context.TODO())
+	fmt.Println(r.Result())
+	client.ReloadState(context.TODO())
+
+	return cacheme.NewCluster(client)
+}
+
+func CleanRedis() {
+
+	client := redis.NewClusterClient(
+		&redis.ClusterOptions{
+			Addrs: []string{
+				":7000",
+				":7001",
+				":7002",
+				":7003",
+				":7004",
+				":7005"},
+		},
+	)
+	// client := redis.NewClient(
+	// 	&redis.Options{
+	// 		Addr:     "localhost:6379",
+	// 		Password: "",
+	// 		DB:       0,
+	// 	},
+	// )
+	r := client.Ping(context.TODO())
+	fmt.Println(r.Result())
+	client.ReloadState(context.TODO())
+
+	err := client.ForEachMaster(context.TODO(), func(ctx context.Context, master *redis.Client) error {
+		return master.FlushDB(ctx).Err()
+	})
+	fmt.Println("ERR", err)
+
 }
 
 func RestCounter() {
@@ -87,7 +128,7 @@ func TestCacheType(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			fetcher.Setup()
-			client := Cacheme()
+			client := CachemeCluster()
 			defer CleanRedis()
 			RestCounter()
 			ctx := context.Background()
@@ -107,6 +148,7 @@ func TestCacheType(t *testing.T) {
 			}
 
 			// test get without cache
+
 			r1, err := client.SimpleCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)
 			require.Equal(t, tc.expectedSimple, r1)

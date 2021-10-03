@@ -24,16 +24,26 @@ type Client struct {
 	{{ $NodeName := .Name | FirstLower  }}
 	{{.Name}}CacheStore *{{$NodeName}}Cache
 	{{end}}
-	redis *redis.Client
+	redis cacheme.RedisClient
+	cluster bool
 }
 
-func New(redis *redis.Client) *Client {
-     client := Client{redis: redis}
+func New(redis cacheme.RedisClient) *Client {
+     client := &Client{redis: redis}
      {{range .Stores}}
      client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone()
-     client.{{.Name}}CacheStore.SetClient(redis)
+     client.{{.Name}}CacheStore.SetClient(client)
      {{end}}
-     return &client
+     return client
+}
+
+func NewCluster(redis cacheme.RedisClient) *Client {
+     client := &Client{redis: redis, cluster: true}
+     {{range .Stores}}
+     client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone()
+     client.{{.Name}}CacheStore.SetClient(client)
+     {{end}}
+     return client
 }
 
 func (c *Client) NewPipeline() *cacheme.CachePipeline {
@@ -57,7 +67,7 @@ type {{$NodeName}}Cache struct {
      tag string
      once sync.Once
      memo *cacheme.RedisMemoLock
-     redis *redis.Client
+     client *Client
 }
 
 type {{.Name}}Promise struct {
@@ -119,8 +129,8 @@ func (p *{{.Name}}Promise) Result() ({{.ToType}}, error) {
 
 var {{.Name}}CacheStore = &{{$NodeName}}Cache{tag: "{{.Name}}"}
 
-func (s *{{$NodeName}}Cache) SetClient(c *redis.Client) {
-     s.redis = c
+func (s *{{$NodeName}}Cache) SetClient(c *Client) {
+     s.client = c
 }
 
 func (s *{{$NodeName}}Cache) Clone() *{{$NodeName}}Cache {
@@ -149,7 +159,7 @@ func (s *{{$NodeName}}Cache) versionedGroup(v int) string {
 }
 
 func (s *{{$NodeName}}Cache) AddMemoLock() error {
-     lock, err := cacheme.NewRedisMemoLock(context.TODO(), "{{$Prefix}}", s.redis, s.tag, 5*time.Second)
+     lock, err := cacheme.NewRedisMemoLock(context.TODO(), "{{$Prefix}}", s.client.redis, s.tag, 5*time.Second)
      if err != nil {
      	return err
      }
@@ -198,7 +208,7 @@ func (s *{{$NodeName}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline
 func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.ToType}}, error) {
 
      s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "{{$Prefix}}", s.redis, s.tag, 5*time.Second)
+		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "{{$Prefix}}", s.client.redis, s.tag, 5*time.Second)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -291,35 +301,17 @@ func (s *{{$NodeName}}Cache) Invalid(ctx context.Context, {{ range $index, $elem
      if err != nil {
      	return err
      }
-     return  s.redis.Del(ctx, key).Err()
+     return  s.client.redis.Del(ctx, key).Err()
 
 }
 
 func (s *{{$NodeName}}Cache) InvalidAll(ctx context.Context, version int) error {
+     group := s.versionedGroup(version)
+     if s.client.cluster {
+     	return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
+     }
+     return cacheme.InvalidAll(ctx, group, s.client.redis)
 
-	group := s.versionedGroup(version)
-	iter := s.redis.SScan(ctx, group, 0, "", 200).Iterator()
-	invalids := []string{}
-	for iter.Next(ctx) {
-		invalids = append(invalids, iter.Val())
-		if len(invalids) == 600 {
-			err := s.redis.Unlink(ctx, invalids...).Err()
-			if err != nil {
-				fmt.Println(err)
-			}
-			invalids = []string{}
-		}
-	}
-	
-	if len(invalids) > 0 {
-	   err := s.redis.Unlink(ctx, invalids...).Err()
-	   if err != nil {
-	       return err
-	   }
-	   err = s.redis.Unlink(ctx, group).Err()
-	   return err
-	}
-	return nil
 }
 
 {{end}}

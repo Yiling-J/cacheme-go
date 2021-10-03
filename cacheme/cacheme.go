@@ -23,11 +23,15 @@ var templateDir embed.FS
 
 var varRegex = regexp.MustCompile(`{{.([a-zA-Z0-9]+)}}`)
 
+type RedisClient interface {
+	PSubscribe(ctx context.Context, channels ...string) *redis.PubSub
+	redis.Cmdable
+}
+
 type CacheStore interface {
 	Initialized() bool
 	Tag() string
 	AddMemoLock() error
-	SetClient(*redis.Client)
 }
 
 func Check(stores []CacheStore) {
@@ -65,7 +69,7 @@ func (p *CachePipeline) Execute(ctx context.Context) error {
 	return nil
 }
 
-func NewPipeline(client *redis.Client) *CachePipeline {
+func NewPipeline(client RedisClient) *CachePipeline {
 	return &CachePipeline{
 		Pipeline: client.Pipeline(),
 		Wg:       &sync.WaitGroup{},
@@ -167,6 +171,85 @@ func SchemaToStore(prefix string, stores []*StoreTemplate, imports []string, sav
 
 	if err = ioutil.WriteFile("cacheme/store.go", buf, 0644); err != nil { //nolint
 		fmt.Println("writing go file:", err)
+		return err
+	}
+	return nil
+}
+
+func InvalidAll(ctx context.Context, group string, client RedisClient) error {
+	iter := client.SScan(ctx, group, 0, "", 200).Iterator()
+	invalids := []string{}
+	for iter.Next(ctx) {
+		invalids = append(invalids, iter.Val())
+		if len(invalids) == 600 {
+			err := client.Unlink(ctx, invalids...).Err()
+			if err != nil {
+				fmt.Println(err)
+			}
+			invalids = []string{}
+		}
+	}
+
+	if len(invalids) > 0 {
+		err := client.Unlink(ctx, invalids...).Err()
+		if err != nil {
+			return err
+		}
+		err = client.Unlink(ctx, group).Err()
+		return err
+	}
+	return nil
+}
+
+func InvalidAllCluster(ctx context.Context, group string, client RedisClient) error {
+
+	clusterClient := client.(*redis.ClusterClient)
+
+	iter := clusterClient.SScan(ctx, group, 0, "", 200).Iterator()
+	invalids := make(map[string][]string)
+	counter := 0
+	for iter.Next(ctx) {
+
+		key := iter.Val()
+		node, err := clusterClient.MasterForKey(ctx, key)
+		if err != nil {
+			return err
+		}
+
+		addr := node.Options().Addr
+
+		if v, ok := invalids[addr]; ok {
+			v = append(v, key)
+			invalids[addr] = v
+
+		} else {
+			invalids[addr] = []string{key}
+		}
+		counter++
+
+		if counter == 600 {
+
+			for _, v := range invalids {
+
+				err := clusterClient.Unlink(ctx, v...).Err()
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+			invalids = make(map[string][]string)
+			counter = 0
+		}
+	}
+
+	if counter > 0 {
+		for _, v := range invalids {
+
+			err := clusterClient.Unlink(ctx, v...).Err()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		err := clusterClient.Unlink(ctx, group).Err()
 		return err
 	}
 	return nil

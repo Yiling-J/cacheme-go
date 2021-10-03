@@ -41,7 +41,7 @@ type subRequest struct {
 
 // RedisMemoLock implements the "promise" mechanism
 type RedisMemoLock struct {
-	client        *redis.Client
+	client        RedisClient
 	resourceTag   string
 	prefix        string
 	lockTimeout   time.Duration
@@ -102,7 +102,7 @@ func (r *RedisMemoLock) dispatch() {
 }
 
 // NewRedisMemoLock Creates a new RedisMemoLock instance
-func NewRedisMemoLock(ctx context.Context, prefix string, client *redis.Client, resourceTag string, lockTimeout time.Duration) (*RedisMemoLock, error) {
+func NewRedisMemoLock(ctx context.Context, prefix string, client RedisClient, resourceTag string, lockTimeout time.Duration) (*RedisMemoLock, error) {
 	pattern := resourceTag + "/notif:*"
 
 	pubsub := client.PSubscribe(ctx, pattern)

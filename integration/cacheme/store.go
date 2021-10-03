@@ -31,31 +31,56 @@ type Client struct {
 
 	FooListPCacheStore *fooListPCache
 
-	redis *redis.Client
+	redis   cacheme.RedisClient
+	cluster bool
 }
 
-func New(redis *redis.Client) *Client {
-	client := Client{redis: redis}
+func New(redis cacheme.RedisClient) *Client {
+	client := &Client{redis: redis}
 
 	client.SimpleCacheStore = SimpleCacheStore.Clone()
-	client.SimpleCacheStore.SetClient(redis)
+	client.SimpleCacheStore.SetClient(client)
 
 	client.FooMapCacheStore = FooMapCacheStore.Clone()
-	client.FooMapCacheStore.SetClient(redis)
+	client.FooMapCacheStore.SetClient(client)
 
 	client.FooCacheStore = FooCacheStore.Clone()
-	client.FooCacheStore.SetClient(redis)
+	client.FooCacheStore.SetClient(client)
 
 	client.FooPCacheStore = FooPCacheStore.Clone()
-	client.FooPCacheStore.SetClient(redis)
+	client.FooPCacheStore.SetClient(client)
 
 	client.FooListCacheStore = FooListCacheStore.Clone()
-	client.FooListCacheStore.SetClient(redis)
+	client.FooListCacheStore.SetClient(client)
 
 	client.FooListPCacheStore = FooListPCacheStore.Clone()
-	client.FooListPCacheStore.SetClient(redis)
+	client.FooListPCacheStore.SetClient(client)
 
-	return &client
+	return client
+}
+
+func NewCluster(redis cacheme.RedisClient) *Client {
+	client := &Client{redis: redis, cluster: true}
+
+	client.SimpleCacheStore = SimpleCacheStore.Clone()
+	client.SimpleCacheStore.SetClient(client)
+
+	client.FooMapCacheStore = FooMapCacheStore.Clone()
+	client.FooMapCacheStore.SetClient(client)
+
+	client.FooCacheStore = FooCacheStore.Clone()
+	client.FooCacheStore.SetClient(client)
+
+	client.FooPCacheStore = FooPCacheStore.Clone()
+	client.FooPCacheStore.SetClient(client)
+
+	client.FooListCacheStore = FooListCacheStore.Clone()
+	client.FooListCacheStore.SetClient(client)
+
+	client.FooListPCacheStore = FooListPCacheStore.Clone()
+	client.FooListPCacheStore.SetClient(client)
+
+	return client
 }
 
 func (c *Client) NewPipeline() *cacheme.CachePipeline {
@@ -79,11 +104,11 @@ var stores = []cacheme.CacheStore{
 }
 
 type simpleCache struct {
-	Fetch func(ctx context.Context, ID string) (string, error)
-	tag   string
-	once  sync.Once
-	memo  *cacheme.RedisMemoLock
-	redis *redis.Client
+	Fetch  func(ctx context.Context, ID string) (string, error)
+	tag    string
+	once   sync.Once
+	memo   *cacheme.RedisMemoLock
+	client *Client
 }
 
 type SimplePromise struct {
@@ -145,8 +170,8 @@ func (p *SimplePromise) Result() (string, error) {
 
 var SimpleCacheStore = &simpleCache{tag: "Simple"}
 
-func (s *simpleCache) SetClient(c *redis.Client) {
-	s.redis = c
+func (s *simpleCache) SetClient(c *Client) {
+	s.client = c
 }
 
 func (s *simpleCache) Clone() *simpleCache {
@@ -175,7 +200,7 @@ func (s *simpleCache) versionedGroup(v int) string {
 }
 
 func (s *simpleCache) AddMemoLock() error {
-	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -221,7 +246,7 @@ func (s *simpleCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 
 	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -311,43 +336,25 @@ func (s *simpleCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.redis.Del(ctx, key).Err()
+	return s.client.redis.Del(ctx, key).Err()
 
 }
 
 func (s *simpleCache) InvalidAll(ctx context.Context, version int) error {
-
 	group := s.versionedGroup(version)
-	iter := s.redis.SScan(ctx, group, 0, "", 200).Iterator()
-	invalids := []string{}
-	for iter.Next(ctx) {
-		invalids = append(invalids, iter.Val())
-		if len(invalids) == 600 {
-			err := s.redis.Unlink(ctx, invalids...).Err()
-			if err != nil {
-				fmt.Println(err)
-			}
-			invalids = []string{}
-		}
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
 	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
 
-	if len(invalids) > 0 {
-		err := s.redis.Unlink(ctx, invalids...).Err()
-		if err != nil {
-			return err
-		}
-		err = s.redis.Unlink(ctx, group).Err()
-		return err
-	}
-	return nil
 }
 
 type fooMapCache struct {
-	Fetch func(ctx context.Context, ID string) (map[string]string, error)
-	tag   string
-	once  sync.Once
-	memo  *cacheme.RedisMemoLock
-	redis *redis.Client
+	Fetch  func(ctx context.Context, ID string) (map[string]string, error)
+	tag    string
+	once   sync.Once
+	memo   *cacheme.RedisMemoLock
+	client *Client
 }
 
 type FooMapPromise struct {
@@ -409,8 +416,8 @@ func (p *FooMapPromise) Result() (map[string]string, error) {
 
 var FooMapCacheStore = &fooMapCache{tag: "FooMap"}
 
-func (s *fooMapCache) SetClient(c *redis.Client) {
-	s.redis = c
+func (s *fooMapCache) SetClient(c *Client) {
+	s.client = c
 }
 
 func (s *fooMapCache) Clone() *fooMapCache {
@@ -439,7 +446,7 @@ func (s *fooMapCache) versionedGroup(v int) string {
 }
 
 func (s *fooMapCache) AddMemoLock() error {
-	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -485,7 +492,7 @@ func (s *fooMapCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, error) {
 
 	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -575,43 +582,25 @@ func (s *fooMapCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.redis.Del(ctx, key).Err()
+	return s.client.redis.Del(ctx, key).Err()
 
 }
 
 func (s *fooMapCache) InvalidAll(ctx context.Context, version int) error {
-
 	group := s.versionedGroup(version)
-	iter := s.redis.SScan(ctx, group, 0, "", 200).Iterator()
-	invalids := []string{}
-	for iter.Next(ctx) {
-		invalids = append(invalids, iter.Val())
-		if len(invalids) == 600 {
-			err := s.redis.Unlink(ctx, invalids...).Err()
-			if err != nil {
-				fmt.Println(err)
-			}
-			invalids = []string{}
-		}
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
 	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
 
-	if len(invalids) > 0 {
-		err := s.redis.Unlink(ctx, invalids...).Err()
-		if err != nil {
-			return err
-		}
-		err = s.redis.Unlink(ctx, group).Err()
-		return err
-	}
-	return nil
 }
 
 type fooCache struct {
-	Fetch func(ctx context.Context, ID string) (model.Foo, error)
-	tag   string
-	once  sync.Once
-	memo  *cacheme.RedisMemoLock
-	redis *redis.Client
+	Fetch  func(ctx context.Context, ID string) (model.Foo, error)
+	tag    string
+	once   sync.Once
+	memo   *cacheme.RedisMemoLock
+	client *Client
 }
 
 type FooPromise struct {
@@ -673,8 +662,8 @@ func (p *FooPromise) Result() (model.Foo, error) {
 
 var FooCacheStore = &fooCache{tag: "Foo"}
 
-func (s *fooCache) SetClient(c *redis.Client) {
-	s.redis = c
+func (s *fooCache) SetClient(c *Client) {
+	s.client = c
 }
 
 func (s *fooCache) Clone() *fooCache {
@@ -703,7 +692,7 @@ func (s *fooCache) versionedGroup(v int) string {
 }
 
 func (s *fooCache) AddMemoLock() error {
-	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -749,7 +738,7 @@ func (s *fooCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID strin
 func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 
 	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -839,43 +828,25 @@ func (s *fooCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.redis.Del(ctx, key).Err()
+	return s.client.redis.Del(ctx, key).Err()
 
 }
 
 func (s *fooCache) InvalidAll(ctx context.Context, version int) error {
-
 	group := s.versionedGroup(version)
-	iter := s.redis.SScan(ctx, group, 0, "", 200).Iterator()
-	invalids := []string{}
-	for iter.Next(ctx) {
-		invalids = append(invalids, iter.Val())
-		if len(invalids) == 600 {
-			err := s.redis.Unlink(ctx, invalids...).Err()
-			if err != nil {
-				fmt.Println(err)
-			}
-			invalids = []string{}
-		}
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
 	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
 
-	if len(invalids) > 0 {
-		err := s.redis.Unlink(ctx, invalids...).Err()
-		if err != nil {
-			return err
-		}
-		err = s.redis.Unlink(ctx, group).Err()
-		return err
-	}
-	return nil
 }
 
 type fooPCache struct {
-	Fetch func(ctx context.Context, ID string) (*model.Foo, error)
-	tag   string
-	once  sync.Once
-	memo  *cacheme.RedisMemoLock
-	redis *redis.Client
+	Fetch  func(ctx context.Context, ID string) (*model.Foo, error)
+	tag    string
+	once   sync.Once
+	memo   *cacheme.RedisMemoLock
+	client *Client
 }
 
 type FooPPromise struct {
@@ -937,8 +908,8 @@ func (p *FooPPromise) Result() (*model.Foo, error) {
 
 var FooPCacheStore = &fooPCache{tag: "FooP"}
 
-func (s *fooPCache) SetClient(c *redis.Client) {
-	s.redis = c
+func (s *fooPCache) SetClient(c *Client) {
+	s.client = c
 }
 
 func (s *fooPCache) Clone() *fooPCache {
@@ -967,7 +938,7 @@ func (s *fooPCache) versionedGroup(v int) string {
 }
 
 func (s *fooPCache) AddMemoLock() error {
-	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -1013,7 +984,7 @@ func (s *fooPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID stri
 func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 
 	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -1103,43 +1074,25 @@ func (s *fooPCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.redis.Del(ctx, key).Err()
+	return s.client.redis.Del(ctx, key).Err()
 
 }
 
 func (s *fooPCache) InvalidAll(ctx context.Context, version int) error {
-
 	group := s.versionedGroup(version)
-	iter := s.redis.SScan(ctx, group, 0, "", 200).Iterator()
-	invalids := []string{}
-	for iter.Next(ctx) {
-		invalids = append(invalids, iter.Val())
-		if len(invalids) == 600 {
-			err := s.redis.Unlink(ctx, invalids...).Err()
-			if err != nil {
-				fmt.Println(err)
-			}
-			invalids = []string{}
-		}
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
 	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
 
-	if len(invalids) > 0 {
-		err := s.redis.Unlink(ctx, invalids...).Err()
-		if err != nil {
-			return err
-		}
-		err = s.redis.Unlink(ctx, group).Err()
-		return err
-	}
-	return nil
 }
 
 type fooListCache struct {
-	Fetch func(ctx context.Context, ID string) ([]model.Foo, error)
-	tag   string
-	once  sync.Once
-	memo  *cacheme.RedisMemoLock
-	redis *redis.Client
+	Fetch  func(ctx context.Context, ID string) ([]model.Foo, error)
+	tag    string
+	once   sync.Once
+	memo   *cacheme.RedisMemoLock
+	client *Client
 }
 
 type FooListPromise struct {
@@ -1201,8 +1154,8 @@ func (p *FooListPromise) Result() ([]model.Foo, error) {
 
 var FooListCacheStore = &fooListCache{tag: "FooList"}
 
-func (s *fooListCache) SetClient(c *redis.Client) {
-	s.redis = c
+func (s *fooListCache) SetClient(c *Client) {
+	s.client = c
 }
 
 func (s *fooListCache) Clone() *fooListCache {
@@ -1231,7 +1184,7 @@ func (s *fooListCache) versionedGroup(v int) string {
 }
 
 func (s *fooListCache) AddMemoLock() error {
-	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -1277,7 +1230,7 @@ func (s *fooListCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID s
 func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) {
 
 	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -1367,43 +1320,25 @@ func (s *fooListCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.redis.Del(ctx, key).Err()
+	return s.client.redis.Del(ctx, key).Err()
 
 }
 
 func (s *fooListCache) InvalidAll(ctx context.Context, version int) error {
-
 	group := s.versionedGroup(version)
-	iter := s.redis.SScan(ctx, group, 0, "", 200).Iterator()
-	invalids := []string{}
-	for iter.Next(ctx) {
-		invalids = append(invalids, iter.Val())
-		if len(invalids) == 600 {
-			err := s.redis.Unlink(ctx, invalids...).Err()
-			if err != nil {
-				fmt.Println(err)
-			}
-			invalids = []string{}
-		}
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
 	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
 
-	if len(invalids) > 0 {
-		err := s.redis.Unlink(ctx, invalids...).Err()
-		if err != nil {
-			return err
-		}
-		err = s.redis.Unlink(ctx, group).Err()
-		return err
-	}
-	return nil
 }
 
 type fooListPCache struct {
-	Fetch func(ctx context.Context, ID string) ([]*model.Foo, error)
-	tag   string
-	once  sync.Once
-	memo  *cacheme.RedisMemoLock
-	redis *redis.Client
+	Fetch  func(ctx context.Context, ID string) ([]*model.Foo, error)
+	tag    string
+	once   sync.Once
+	memo   *cacheme.RedisMemoLock
+	client *Client
 }
 
 type FooListPPromise struct {
@@ -1465,8 +1400,8 @@ func (p *FooListPPromise) Result() ([]*model.Foo, error) {
 
 var FooListPCacheStore = &fooListPCache{tag: "FooListP"}
 
-func (s *fooListPCache) SetClient(c *redis.Client) {
-	s.redis = c
+func (s *fooListPCache) SetClient(c *Client) {
+	s.client = c
 }
 
 func (s *fooListPCache) Clone() *fooListPCache {
@@ -1495,7 +1430,7 @@ func (s *fooListPCache) versionedGroup(v int) string {
 }
 
 func (s *fooListPCache) AddMemoLock() error {
-	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -1541,7 +1476,7 @@ func (s *fooListPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID 
 func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error) {
 
 	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.redis, s.tag, 5*time.Second)
+		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -1631,33 +1566,15 @@ func (s *fooListPCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.redis.Del(ctx, key).Err()
+	return s.client.redis.Del(ctx, key).Err()
 
 }
 
 func (s *fooListPCache) InvalidAll(ctx context.Context, version int) error {
-
 	group := s.versionedGroup(version)
-	iter := s.redis.SScan(ctx, group, 0, "", 200).Iterator()
-	invalids := []string{}
-	for iter.Next(ctx) {
-		invalids = append(invalids, iter.Val())
-		if len(invalids) == 600 {
-			err := s.redis.Unlink(ctx, invalids...).Err()
-			if err != nil {
-				fmt.Println(err)
-			}
-			invalids = []string{}
-		}
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
 	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
 
-	if len(invalids) > 0 {
-		err := s.redis.Unlink(ctx, invalids...).Err()
-		if err != nil {
-			return err
-		}
-		err = s.redis.Unlink(ctx, group).Err()
-		return err
-	}
-	return nil
 }

@@ -263,6 +263,28 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Nil(t, err)
 			require.Equal(t, "1", r1)
 
+			// test pipeline
+			fetcher.SimpleCacheStoreCounter = 0
+			pipeline := cachemeo.NewPipeline(client.Redis())
+			ids := []string{"1", "2", "3", "4"}
+			var ps []*cacheme.SimplePromise
+			for _, i := range ids {
+				promise, err := client.SimpleCacheStore.GetP(ctx, pipeline, i)
+				require.Nil(t, err)
+				ps = append(ps, promise)
+			}
+			err = pipeline.Execute(ctx)
+			require.Nil(t, err)
+
+			var results []string
+			for _, promise := range ps {
+				r, err := promise.Result()
+				require.Nil(t, err)
+				results = append(results, r)
+			}
+
+			require.Equal(t, []string{"1", "2", "3", "4"}, results)
+			require.Equal(t, 3, fetcher.SimpleCacheStoreCounter)
 		},
 		)
 	}

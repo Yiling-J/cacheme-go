@@ -16,3 +16,19 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           version: v1.29
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+      redis-cluster:
+        image: grokzen/redis-cluster:latest
+        env:
+          IP: "0.0.0.0"
+        ports: [7000:7000,7001:7001,7002:7002,7003:7003,7004:7004:7005:7005]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Test
+        run: go test -race -v ./...
+      

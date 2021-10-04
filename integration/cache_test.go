@@ -2,8 +2,11 @@ package integration_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 	"testing"
+	"time"
 
 	cachemeo "github.com/Yiling-J/cacheme-go/cacheme"
 	"github.com/Yiling-J/cacheme-go/integration/cacheme"
@@ -355,4 +358,63 @@ func TestCluster(t *testing.T) {
 	fetcher.Setup()
 	client := CachemeCluster()
 	CacheTypeTest(t, client, CleanRedisCluster)
+}
+
+func CacheConcurrencyTestCase(t *testing.T, client *cacheme.Client, cleanFunc func()) {
+	defer cleanFunc()
+
+	var mu sync.Mutex
+
+	client.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
+		mu.Lock()
+		fetcher.SimpleCacheStoreCounter++
+		mu.Unlock()
+
+		if ID == "" {
+			return "", nil
+		}
+		if ID == "E" {
+			return "", errors.New("")
+		}
+
+		fmt.Println("sleep")
+		time.Sleep(500 * time.Millisecond)
+
+		return ID + fetcher.Tester, nil
+	}
+
+	RestCounter()
+	var wg sync.WaitGroup
+	ctx := context.Background()
+
+	for i := 1; i <= 200; i++ {
+		wg.Add(1)
+		go func(c int) {
+			defer wg.Done()
+			if c%2 == 1 {
+				r, err := client.SimpleCacheStore.Get(ctx, "a")
+				require.Nil(t, err)
+				require.Equal(t, "a"+fetcher.Tester, r)
+			} else {
+				r, err := client.SimpleCacheStore.Get(ctx, "b")
+				require.Nil(t, err)
+				require.Equal(t, "b"+fetcher.Tester, r)
+			}
+		}(i)
+	}
+	wg.Wait()
+	require.Equal(t, 2, fetcher.SimpleCacheStoreCounter)
+
+}
+
+func TestSingleConcurrency(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	CacheConcurrencyTestCase(t, client, CleanRedis)
+}
+
+func TestClusterConcurrency(t *testing.T) {
+	fetcher.Setup()
+	client := CachemeCluster()
+	CacheConcurrencyTestCase(t, client, CleanRedisCluster)
 }

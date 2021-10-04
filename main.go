@@ -49,6 +49,21 @@ func main() {
 
 `
 
+func get(target string) (string, error) {
+	cmd := exec.Command("go", "get", target)
+	stderr := bytes.NewBuffer(nil)
+	stdout := bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	if err := cmd.Run(); err != nil {
+		fmt.Println(stdout.String())
+		fmt.Println(stderr.String())
+		return "", fmt.Errorf("get error: %s", stderr)
+	}
+	fmt.Println(stdout.String())
+	return stdout.String(), nil
+}
+
 func run(target string) (string, error) {
 	cmd := exec.Command("go", "run", target)
 	stderr := bytes.NewBuffer(nil)
@@ -151,6 +166,12 @@ func generateCmd() *cobra.Command {
 				os.Exit(1)
 			}
 			defer os.RemoveAll("cacheme/.gen")
+			_, err = get("github.com/go-redis/redis/v8")
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
 			_, err = run(target)
 			if err != nil {
 				fmt.Println(err)

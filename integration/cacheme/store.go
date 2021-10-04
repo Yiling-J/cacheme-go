@@ -34,6 +34,10 @@ type Client struct {
 	cluster bool
 }
 
+func (c *Client) Redis() cacheme.RedisClient {
+	return c.redis
+}
+
 func New(redis cacheme.RedisClient) *Client {
 	client := &Client{redis: redis}
 

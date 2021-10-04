@@ -12,7 +12,6 @@ import (
 	"strconv"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/vmihailenco/msgpack/v5"
 	"github.com/Yiling-J/cacheme-go/cacheme"
 	{{range .Imports}}
 	"{{.}}"
@@ -82,17 +81,17 @@ type {{.Name}}Promise struct {
 func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {
 	defer cp.Wg.Done()
 	var t {{.ToType}}
-	cacheme := p.store.memo
+	memo := p.store.memo
 
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		err = msgpack.Unmarshal(value, &t)
+		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
 	}
 
-	resourceLock, err := cacheme.Lock(p.ctx, key)
+	resourceLock, err := memo.Lock(p.ctx, key)
 	if err != nil {
 		p.error = err
 		return
@@ -107,18 +106,18 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 			return
 		}
 		p.result = value
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
-			cacheme.SetCache(p.ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})
-			cacheme.AddGroup(p.ctx, p.store.Group(), key)
+			memo.SetCache(p.ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})
+			memo.AddGroup(p.ctx, p.store.Group(), key)
 		}
 		p.error = err
 		return
 	}
 
-	res, err := cacheme.Wait(p.ctx, key)
+	res, err := memo.Wait(p.ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 	}
 	p.result, p.error = t, err
 }
@@ -232,7 +231,7 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
 
      res, err := memo.GetCached(ctx, key)
      if err == nil {
-	err = msgpack.Unmarshal(res, &t)
+	err = cacheme.Unmarshal(res, &t)
 	return t, err
      }
 
@@ -250,7 +249,7 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
 	if err != nil {
 	   return value, err
 	}
-	packed, err := msgpack.Marshal(value)
+	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		memo.SetCache(ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})
 		memo.AddGroup(ctx, s.Group(), key)
@@ -260,7 +259,7 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
 
      res, err = memo.Wait(ctx, key)
      if err == nil {
-	err = msgpack.Unmarshal(res, &t)
+	err = cacheme.Unmarshal(res, &t)
 	return t, err
      }
      return t, err
@@ -282,7 +281,7 @@ func (s *{{$NodeName}}Cache) Update(ctx context.Context, {{ range $index, $eleme
      if err != nil {
      	return err
      }
-     packed, err := msgpack.Marshal(value)
+     packed, err := cacheme.Marshal(value)
      if err == nil {
 	s.memo.SetCache(ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})
 	s.memo.AddGroup(ctx, s.Group(), key)

@@ -13,7 +13,6 @@ import (
 
 	"github.com/Yiling-J/cacheme-go/cacheme"
 	"github.com/go-redis/redis/v8"
-	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/Yiling-J/cacheme-go/integration/model"
 )
@@ -33,10 +32,6 @@ type Client struct {
 
 	redis   cacheme.RedisClient
 	cluster bool
-}
-
-func (c *Client) Redis() cacheme.RedisClient {
-	return c.redis
 }
 
 func New(redis cacheme.RedisClient) *Client {
@@ -127,17 +122,17 @@ type SimplePromise struct {
 func (p *SimplePromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t string
-	cacheme := p.store.memo
+	memo := p.store.memo
 
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		err = msgpack.Unmarshal(value, &t)
+		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
 	}
 
-	resourceLock, err := cacheme.Lock(p.ctx, key)
+	resourceLock, err := memo.Lock(p.ctx, key)
 	if err != nil {
 		p.error = err
 		return
@@ -152,18 +147,18 @@ func (p *SimplePromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 			return
 		}
 		p.result = value
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
-			cacheme.SetCache(p.ctx, key, packed, time.Millisecond*300000)
-			cacheme.AddGroup(p.ctx, p.store.Group(), key)
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
 		}
 		p.error = err
 		return
 	}
 
-	res, err := cacheme.Wait(p.ctx, key)
+	res, err := memo.Wait(p.ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 	}
 	p.result, p.error = t, err
 }
@@ -273,7 +268,7 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 
 	res, err := memo.GetCached(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 
@@ -291,7 +286,7 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 		if err != nil {
 			return value, err
 		}
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 			memo.AddGroup(ctx, s.Group(), key)
@@ -301,7 +296,7 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 
 	res, err = memo.Wait(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 	return t, err
@@ -322,7 +317,7 @@ func (s *simpleCache) Update(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	packed, err := msgpack.Marshal(value)
+	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 		s.memo.AddGroup(ctx, s.Group(), key)
@@ -373,17 +368,17 @@ type FooMapPromise struct {
 func (p *FooMapPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t map[string]string
-	cacheme := p.store.memo
+	memo := p.store.memo
 
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		err = msgpack.Unmarshal(value, &t)
+		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
 	}
 
-	resourceLock, err := cacheme.Lock(p.ctx, key)
+	resourceLock, err := memo.Lock(p.ctx, key)
 	if err != nil {
 		p.error = err
 		return
@@ -398,18 +393,18 @@ func (p *FooMapPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 			return
 		}
 		p.result = value
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
-			cacheme.SetCache(p.ctx, key, packed, time.Millisecond*300000)
-			cacheme.AddGroup(p.ctx, p.store.Group(), key)
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
 		}
 		p.error = err
 		return
 	}
 
-	res, err := cacheme.Wait(p.ctx, key)
+	res, err := memo.Wait(p.ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 	}
 	p.result, p.error = t, err
 }
@@ -519,7 +514,7 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 
 	res, err := memo.GetCached(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 
@@ -537,7 +532,7 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 		if err != nil {
 			return value, err
 		}
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 			memo.AddGroup(ctx, s.Group(), key)
@@ -547,7 +542,7 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 
 	res, err = memo.Wait(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 	return t, err
@@ -568,7 +563,7 @@ func (s *fooMapCache) Update(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	packed, err := msgpack.Marshal(value)
+	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 		s.memo.AddGroup(ctx, s.Group(), key)
@@ -619,17 +614,17 @@ type FooPromise struct {
 func (p *FooPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t model.Foo
-	cacheme := p.store.memo
+	memo := p.store.memo
 
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		err = msgpack.Unmarshal(value, &t)
+		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
 	}
 
-	resourceLock, err := cacheme.Lock(p.ctx, key)
+	resourceLock, err := memo.Lock(p.ctx, key)
 	if err != nil {
 		p.error = err
 		return
@@ -644,18 +639,18 @@ func (p *FooPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID strin
 			return
 		}
 		p.result = value
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
-			cacheme.SetCache(p.ctx, key, packed, time.Millisecond*300000)
-			cacheme.AddGroup(p.ctx, p.store.Group(), key)
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
 		}
 		p.error = err
 		return
 	}
 
-	res, err := cacheme.Wait(p.ctx, key)
+	res, err := memo.Wait(p.ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 	}
 	p.result, p.error = t, err
 }
@@ -765,7 +760,7 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 
 	res, err := memo.GetCached(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 
@@ -783,7 +778,7 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 		if err != nil {
 			return value, err
 		}
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 			memo.AddGroup(ctx, s.Group(), key)
@@ -793,7 +788,7 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 
 	res, err = memo.Wait(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 	return t, err
@@ -814,7 +809,7 @@ func (s *fooCache) Update(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	packed, err := msgpack.Marshal(value)
+	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 		s.memo.AddGroup(ctx, s.Group(), key)
@@ -865,17 +860,17 @@ type FooPPromise struct {
 func (p *FooPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t *model.Foo
-	cacheme := p.store.memo
+	memo := p.store.memo
 
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		err = msgpack.Unmarshal(value, &t)
+		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
 	}
 
-	resourceLock, err := cacheme.Lock(p.ctx, key)
+	resourceLock, err := memo.Lock(p.ctx, key)
 	if err != nil {
 		p.error = err
 		return
@@ -890,18 +885,18 @@ func (p *FooPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID stri
 			return
 		}
 		p.result = value
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
-			cacheme.SetCache(p.ctx, key, packed, time.Millisecond*300000)
-			cacheme.AddGroup(p.ctx, p.store.Group(), key)
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
 		}
 		p.error = err
 		return
 	}
 
-	res, err := cacheme.Wait(p.ctx, key)
+	res, err := memo.Wait(p.ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 	}
 	p.result, p.error = t, err
 }
@@ -1011,7 +1006,7 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 
 	res, err := memo.GetCached(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 
@@ -1029,7 +1024,7 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 		if err != nil {
 			return value, err
 		}
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 			memo.AddGroup(ctx, s.Group(), key)
@@ -1039,7 +1034,7 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 
 	res, err = memo.Wait(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 	return t, err
@@ -1060,7 +1055,7 @@ func (s *fooPCache) Update(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	packed, err := msgpack.Marshal(value)
+	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 		s.memo.AddGroup(ctx, s.Group(), key)
@@ -1111,17 +1106,17 @@ type FooListPromise struct {
 func (p *FooListPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t []model.Foo
-	cacheme := p.store.memo
+	memo := p.store.memo
 
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		err = msgpack.Unmarshal(value, &t)
+		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
 	}
 
-	resourceLock, err := cacheme.Lock(p.ctx, key)
+	resourceLock, err := memo.Lock(p.ctx, key)
 	if err != nil {
 		p.error = err
 		return
@@ -1136,18 +1131,18 @@ func (p *FooListPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 			return
 		}
 		p.result = value
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
-			cacheme.SetCache(p.ctx, key, packed, time.Millisecond*300000)
-			cacheme.AddGroup(p.ctx, p.store.Group(), key)
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
 		}
 		p.error = err
 		return
 	}
 
-	res, err := cacheme.Wait(p.ctx, key)
+	res, err := memo.Wait(p.ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 	}
 	p.result, p.error = t, err
 }
@@ -1257,7 +1252,7 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 
 	res, err := memo.GetCached(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 
@@ -1275,7 +1270,7 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 		if err != nil {
 			return value, err
 		}
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 			memo.AddGroup(ctx, s.Group(), key)
@@ -1285,7 +1280,7 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 
 	res, err = memo.Wait(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 	return t, err
@@ -1306,7 +1301,7 @@ func (s *fooListCache) Update(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	packed, err := msgpack.Marshal(value)
+	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 		s.memo.AddGroup(ctx, s.Group(), key)
@@ -1357,17 +1352,17 @@ type FooListPPromise struct {
 func (p *FooListPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t []*model.Foo
-	cacheme := p.store.memo
+	memo := p.store.memo
 
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		err = msgpack.Unmarshal(value, &t)
+		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
 	}
 
-	resourceLock, err := cacheme.Lock(p.ctx, key)
+	resourceLock, err := memo.Lock(p.ctx, key)
 	if err != nil {
 		p.error = err
 		return
@@ -1382,18 +1377,18 @@ func (p *FooListPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID 
 			return
 		}
 		p.result = value
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
-			cacheme.SetCache(p.ctx, key, packed, time.Millisecond*300000)
-			cacheme.AddGroup(p.ctx, p.store.Group(), key)
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
 		}
 		p.error = err
 		return
 	}
 
-	res, err := cacheme.Wait(p.ctx, key)
+	res, err := memo.Wait(p.ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 	}
 	p.result, p.error = t, err
 }
@@ -1503,7 +1498,7 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 
 	res, err := memo.GetCached(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 
@@ -1521,7 +1516,7 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 		if err != nil {
 			return value, err
 		}
-		packed, err := msgpack.Marshal(value)
+		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 			memo.AddGroup(ctx, s.Group(), key)
@@ -1531,7 +1526,7 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 
 	res, err = memo.Wait(ctx, key)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &t)
+		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
 	return t, err
@@ -1552,7 +1547,7 @@ func (s *fooListPCache) Update(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	packed, err := msgpack.Marshal(value)
+	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
 		s.memo.AddGroup(ctx, s.Group(), key)

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 //go:embed template/*
@@ -253,4 +254,12 @@ func InvalidAllCluster(ctx context.Context, group string, client RedisClient) er
 		return err
 	}
 	return nil
+}
+
+func Marshal(v interface{}) ([]byte, error) {
+	return msgpack.Marshal(v)
+}
+
+func Unmarshal(data []byte, v interface{}) error {
+	return msgpack.Unmarshal(data, v)
 }

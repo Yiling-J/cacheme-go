@@ -18,7 +18,7 @@ After installing `cacheme-go` codegen, go to the root directory of your project,
 ```console
 go run github.com/Yiling-J/cacheme-go/cmd init
 ```
-The command above will generate `cacheme` folder and `schema.go` file in the root directory:
+The command above will generate `cacheme` folder in project root directory:
 ```console {12-20}
 └── cacheme
     └── schema

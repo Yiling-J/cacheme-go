@@ -14,7 +14,7 @@ var (
 	Imports = []string{"github.com/Yiling-J/cacheme-go/integration/model"}
 
 	// store templates
-	Stores = []*cacheme.StoreTemplate{
+	Stores = []*cacheme.StoreSchema{
 		{
 			Name:    "Simple",
 			Key:     "simple:{{.ID}}",

@@ -43,8 +43,8 @@ var (
 	// extra imports in generated file
 	Imports = []string{}
 
-	// store templates
-	Stores = []*cacheme.StoreTemplate{
+	// store schemas
+	Stores = []*cacheme.StoreSchema{
 		{
 			Name:    "Simple",
 			Key:     "simple:{{.ID}}",

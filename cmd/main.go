@@ -28,7 +28,7 @@ var (
 	Imports = []string{}
 
         // store templates
-	Stores = []*cacheme.StoreTemplate{}
+	Stores = []*cacheme.StoreSchema{}
 )
 `
 

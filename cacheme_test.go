@@ -10,7 +10,7 @@ import (
 
 func TestSchemaToStore(t *testing.T) {
 	// duplicate key pattern
-	stores := []*cacheme.StoreTemplate{
+	stores := []*cacheme.StoreSchema{
 		{
 			Name:    "Simple",
 			Key:     "simple:{{.ID}}",
@@ -31,7 +31,7 @@ func TestSchemaToStore(t *testing.T) {
 	require.NotNil(t, err)
 
 	// duplicate name
-	stores = []*cacheme.StoreTemplate{
+	stores = []*cacheme.StoreSchema{
 		{
 			Name:    "Simple",
 			Key:     "simple:{{.ID}}",
@@ -51,7 +51,7 @@ func TestSchemaToStore(t *testing.T) {
 	require.NotNil(t, err)
 
 	// ok
-	stores = []*cacheme.StoreTemplate{
+	stores = []*cacheme.StoreSchema{
 		{
 			Name:    "Simple",
 			Key:     "simple:{{.ID}}",

@@ -79,7 +79,7 @@ func NewPipeline(client RedisClient) *CachePipeline {
 
 }
 
-type StoreTemplate struct {
+type StoreSchema struct {
 	Name    string
 	Key     string
 	To      string
@@ -88,11 +88,11 @@ type StoreTemplate struct {
 	TTL     time.Duration
 }
 
-func (s *StoreTemplate) ToType() string {
+func (s *StoreSchema) ToType() string {
 	return s.To
 }
 
-func (s *StoreTemplate) SetVars(a []string) {
+func (s *StoreSchema) SetVars(a []string) {
 	s.Vars = a
 }
 
@@ -105,12 +105,12 @@ func firstLower(s string) string {
 }
 
 type templateVar struct {
-	Stores  []*StoreTemplate
+	Stores  []*StoreSchema
 	Imports []string
 	Prefix  string
 }
 
-func SchemaToStore(prefix string, stores []*StoreTemplate, imports []string, save bool) error {
+func SchemaToStore(prefix string, stores []*StoreSchema, imports []string, save bool) error {
 	patternMapping := make(map[string]bool)
 	nameMapping := make(map[string]bool)
 	for _, s := range stores {

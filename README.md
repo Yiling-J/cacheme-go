@@ -25,7 +25,7 @@ The command above will generate `cacheme` folder and `schema.go` file in the roo
         └── schema.go
 ```
 
-## Add schema
+## Add Schema
 Edit `schema.go` and add some schemas:
 ```go
 package schema

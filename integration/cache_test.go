@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	cachemeo "github.com/Yiling-J/cacheme-go/cacheme"
+	cachemeo "github.com/Yiling-J/cacheme-go"
 	"github.com/Yiling-J/cacheme-go/integration/cacheme"
 	"github.com/Yiling-J/cacheme-go/integration/cacheme/fetcher"
 	"github.com/Yiling-J/cacheme-go/integration/model"

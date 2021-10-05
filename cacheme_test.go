@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yiling-J/cacheme-go/cacheme"
+	cacheme "github.com/Yiling-J/cacheme-go"
 	"github.com/stretchr/testify/require"
 )
 

@@ -17,7 +17,7 @@ var schemaCode = `
 package schema
 
 import (
-	"github.com/Yiling-J/cacheme-go/cacheme"
+	cacheme "github.com/Yiling-J/cacheme-go"
 )
 
 var (
@@ -36,7 +36,7 @@ var generateCode = `
 package main
 
 import "os"
-import cm "github.com/Yiling-J/cacheme-go/cacheme"
+import cm "github.com/Yiling-J/cacheme-go"
 import schema "{{.}}/cacheme/schema"
 
 

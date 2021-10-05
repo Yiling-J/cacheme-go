@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Yiling-J/cacheme-go/cacheme"
+	cacheme "github.com/Yiling-J/cacheme-go"
 	"github.com/go-redis/redis/v8"
 
 	"github.com/Yiling-J/cacheme-go/integration/model"

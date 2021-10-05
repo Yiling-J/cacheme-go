@@ -3,7 +3,7 @@ package schema
 import (
 	"time"
 
-	"github.com/Yiling-J/cacheme-go/cacheme"
+	cacheme "github.com/Yiling-J/cacheme-go"
 )
 
 var (

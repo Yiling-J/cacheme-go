@@ -64,6 +64,8 @@ go run github.com/Yiling-J/cacheme-go/cmd generate
 This produces the following files:
 ```console {12-20}
 └── cacheme
+    ├── fetcher
+    │   └── fetcher.go
     ├── schema
     │   └── schema.go
     └── store.go

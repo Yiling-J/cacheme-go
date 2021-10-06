@@ -6,6 +6,7 @@
 
 - **Statically Typed** - 100% statically typed using code generation.
 - **Scale Efficiently** - thundering herd protection via pub/sub.
+- **Cluster Support** - same API for redis & redis cluster.
 - **Memoize** - dynamic key generation based on code generation.
 - **Versioning** - cache versioning for better management.
 - **Pipeline** - reduce io cost by redis pipeline.
@@ -70,6 +71,37 @@ This produces the following files:
     │   └── schema.go
     └── store.go
 ```
-`store.go` is generated based on schemas in `schema.go`.
+`store.go` is generated based on schemas in `schema.go`. Adding more schemas and run `generate` again.
 
 ## Add Fetcher
+Each cache store should provide a fetch function in `fetcher.go`:
+```go
+func Setup() {
+	cacheme.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
+		return ID, nil
+	}
+}
+```
+
+## Use Your Stores
+Create a client and get data, fetch function will be called if cache not exist:
+```go
+import "your_project/cacheme"
+
+func example() (string, error) {
+	ctx := context.TODO()
+	client := cacheme.New(
+		redis.NewClient(&redis.Options{
+			Addr:     "localhost:6379",
+			Password: "",
+			DB:       0,
+		}),
+	)
+	store := client.SimpleCacheStore
+	result, err := store.Get(ctx, "foo")
+	if err != nil {
+		return "", err
+	}
+	return result, err
+}
+```

@@ -209,7 +209,14 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Equal(t, tc.expectedFooListP, r6)
 			require.Equal(t, 1, fetcher.FooListPCacheStoreCounter)
 
-			// test invalid cache
+			// test invalid
+			err = client.SimpleCacheStore.Invalid(ctx, tc.id)
+			require.Nil(t, err)
+			_, err = client.SimpleCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.SimpleCacheStoreCounter)
+
+			// test invalid all
 			err = client.SimpleCacheStore.InvalidAll(ctx, 1)
 			require.Nil(t, err)
 			err = client.FooCacheStore.InvalidAll(ctx, 1)
@@ -226,7 +233,7 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			// test get again,  counter should be 2 now
 			_, err = client.SimpleCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)
-			require.Equal(t, 2, fetcher.SimpleCacheStoreCounter)
+			require.Equal(t, 3, fetcher.SimpleCacheStoreCounter)
 
 			_, err = client.FooCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)

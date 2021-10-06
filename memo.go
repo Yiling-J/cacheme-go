@@ -138,6 +138,12 @@ func (r *RedisMemoLock) GetCached(ctx context.Context, key string) ([]byte, erro
 	return r.client.Get(ctx, resourceID).Bytes()
 }
 
+func (r *RedisMemoLock) DeleteCache(ctx context.Context, key string) error {
+	resourceID := r.prefix + ":" + key
+
+	return r.client.Del(ctx, resourceID).Err()
+}
+
 func (r *RedisMemoLock) GetCachedP(ctx context.Context, pipe redis.Pipeliner, key string) *redis.StringCmd {
 	resourceID := r.prefix + ":" + key
 

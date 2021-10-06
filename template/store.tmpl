@@ -304,7 +304,7 @@ func (s *{{$NodeName}}Cache) Invalid(ctx context.Context, {{ range $index, $elem
      if err != nil {
      	return err
      }
-     return  s.client.redis.Del(ctx, key).Err()
+     return  s.memo.DeleteCache(ctx, key)
 
 }
 

@@ -135,6 +135,35 @@ func initCmd() *cobra.Command {
 				fmt.Println(err)
 				os.Exit(1)
 			}
+
+			if err := os.MkdirAll("cacheme/fetcher", os.ModePerm); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			tmpl, err = template.New("fetcher").Parse(fetcherCode)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			b = &bytes.Buffer{}
+			err = tmpl.Execute(b, nil)
+
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			if buf, err = format.Source(b.Bytes()); err != nil {
+				fmt.Println("formatting output:", err)
+				os.Exit(1)
+			}
+			// nolint: gosec
+			if err := ioutil.WriteFile("cacheme/fetcher/fetcher.go", buf, 0644); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		},
 	}
 	return cmd
@@ -206,34 +235,6 @@ func generateCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			if err := os.MkdirAll("cacheme/fetcher", os.ModePerm); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			tmpl, err = template.New("fetcher").Parse(fetcherCode)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			b = &bytes.Buffer{}
-			err = tmpl.Execute(b, nil)
-
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			if buf, err = format.Source(b.Bytes()); err != nil {
-				fmt.Println("formatting output:", err)
-				os.Exit(1)
-			}
-			// nolint: gosec
-			if err := ioutil.WriteFile("cacheme/fetcher/fetcher.go", buf, 0644); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
 		},
 	}
 	return cmd

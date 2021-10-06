@@ -339,7 +339,7 @@ func (s *simpleCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.client.redis.Del(ctx, key).Err()
+	return s.memo.DeleteCache(ctx, key)
 
 }
 
@@ -585,7 +585,7 @@ func (s *fooMapCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.client.redis.Del(ctx, key).Err()
+	return s.memo.DeleteCache(ctx, key)
 
 }
 
@@ -831,7 +831,7 @@ func (s *fooCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.client.redis.Del(ctx, key).Err()
+	return s.memo.DeleteCache(ctx, key)
 
 }
 
@@ -1077,7 +1077,7 @@ func (s *fooPCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.client.redis.Del(ctx, key).Err()
+	return s.memo.DeleteCache(ctx, key)
 
 }
 
@@ -1323,7 +1323,7 @@ func (s *fooListCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.client.redis.Del(ctx, key).Err()
+	return s.memo.DeleteCache(ctx, key)
 
 }
 
@@ -1569,7 +1569,7 @@ func (s *fooListPCache) Invalid(ctx context.Context, ID string) error {
 	if err != nil {
 		return err
 	}
-	return s.client.redis.Del(ctx, key).Err()
+	return s.memo.DeleteCache(ctx, key)
 
 }
 

@@ -111,3 +111,58 @@ func example() (string, error) {
 	return result, err
 }
 ```
+
+Redis Cluster:
+```go
+import (
+	"your_project/cacheme"
+	"your_project/cacheme/fetcher"
+)
+
+func example() (string, error) {
+	ctx := context.TODO()
+	fetcher.Setup()
+	client := cacheme.NewCluster(
+		redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs: []string{
+				":7000",
+				":7001",
+				":7002"},
+		}),
+	)
+	store := client.SimpleCacheStore
+	result, err := store.Get(ctx, "foo")
+	if err != nil {
+		return "", err
+	}
+	return result, err
+}
+```
+Invalid your cache:
+```go
+err := store.Invalid(ctx, "foo")
+```
+Update your cache:
+```go
+err := store.Update(ctx, "foo")
+```
+Redis pipeline(using same client, skip client creation here):
+```go
+import cachemego "github.com/Yiling-J/cacheme-go"
+
+...
+pipeline := cachemego.NewPipeline(client.Redis())
+ids := []string{"1", "2", "3", "4"}
+var ps []*cacheme.SimplePromise
+for _, i := range ids {
+	promise, err := client.SimpleCacheStore.GetP(ctx, pipeline, i)
+	ps = append(ps, promise)
+}
+err = pipeline.Execute(ctx)
+fmt.Println(err)
+
+for _, promise := range ps {
+	r, err := promise.Result()
+	fmt.Println(r, err)
+}
+```

@@ -86,10 +86,14 @@ func Setup() {
 ## Use Your Stores
 Create a client and get data, fetch function will be called if cache not exist:
 ```go
-import "your_project/cacheme"
+import (
+	"your_project/cacheme"
+	"your_project/cacheme/fetcher"
+)
 
 func example() (string, error) {
 	ctx := context.TODO()
+	fetcher.Setup()
 	client := cacheme.New(
 		redis.NewClient(&redis.Options{
 			Addr:     "localhost:6379",

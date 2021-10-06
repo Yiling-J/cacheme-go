@@ -22,6 +22,8 @@ go run github.com/Yiling-J/cacheme-go/cmd init
 The command above will generate `cacheme` directory under root directory:
 ```console {12-20}
 └── cacheme
+    ├── fetcher
+    │   └── fetcher.go
     └── schema
         └── schema.go
 ```

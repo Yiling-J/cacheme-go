@@ -168,6 +168,39 @@ for _, promise := range ps {
 	fmt.Println(r, err)
 }
 ```
+Mixed pipeline:
+```go
+import cachemego "github.com/Yiling-J/cacheme-go"
+
+...
+// same pipeline for different stores
+pipeline := cachemego.NewPipeline(client.Redis())
+
+ids := []string{"1", "2", "3", "4"}
+var ps []*cacheme.SimplePromise // cache string
+var psf []*cacheme.FooPromise // cache model.Foo struct
+for _, i := range ids {
+	promise, err := client.SimpleCacheStore.GetP(ctx, pipeline, i)
+	ps = append(ps, promise)
+}
+for _, i := range ids {
+	promise, err := client.FooCacheStore.GetP(ctx, pipeline, i)
+	psf = append(psf, promise)
+}
+// execute only once
+err = pipeline.Execute(ctx)
+fmt.Println(err)
+// simple store results
+for _, promise := range ps {
+	r, err := promise.Result()
+	fmt.Println(r, err)
+}
+// foo store results
+for _, promise := range psf {
+	r, err := promise.Result()
+	fmt.Println(r, err)
+}
+```
 Invalid all cache with version:
 ```go
 // invalid all version 1 simple cache
@@ -179,10 +212,10 @@ Each schema has 5 fields:
 - **Name** - store name, will be struct name in generated code, capital first.
 - **Key** - key with variable using **go template syntax**, part of redis key. Variable name will be used in code generation.
 - **To** - cached value type string, will be used in code generation. Examples:
-	- string: "string"
-	- struct: "model.Foo"
-	- struct pointer: "*model.Foo"
-	- slice: "[]model.Foo"
+	- string: `"string"`
+	- struct: `"model.Foo"`
+	- struct pointer: `"*model.Foo"`
+	- slice: `"[]model.Foo"`
 - **Version** - version number, for schema change.
 - **TTL** - redis ttl using go time.
 

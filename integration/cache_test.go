@@ -425,3 +425,22 @@ func TestClusterConcurrency(t *testing.T) {
 	client := CachemeCluster()
 	CacheConcurrencyTestCase(t, client, CleanRedisCluster)
 }
+
+func TestCacheKey(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	ctx := context.TODO()
+
+	_, err := client.SimpleCacheStore.Get(ctx, "foo")
+	require.Nil(t, err)
+
+	keys, err := client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected := []string{
+		"cacheme:simple:foo:1",   // cache key
+		"cacheme:group:Simple:1", // group key
+	}
+	require.ElementsMatch(t, keys, expected)
+
+}

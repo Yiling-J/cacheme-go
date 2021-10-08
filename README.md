@@ -59,6 +59,8 @@ var (
 )
 ```
 
+More details [here](#schema-definition)
+
 ## Store Generation
 Run code generation from the root directory of the project as follows:
 ```console
@@ -165,4 +167,31 @@ for _, promise := range ps {
 	r, err := promise.Result()
 	fmt.Println(r, err)
 }
+```
+Invalid all cache with version:
+```go
+// invalid all version 1 simple cache
+client.SimpleCacheStore.InvalidAll(ctx, 1)
+```
+
+## Schema Definition
+Each schema has 5 fields:
+- **Name** - store name, will be struct name in generated code, capital first.
+- **Key** - key with variable using **go template syntax**, part of redis key. Variable name will be used in code generation.
+- **To** - cached value type string, will be used in code generation. Examples:
+	- string: "string"
+	- struct: "model.Foo"
+	- struct pointer: "*model.Foo"
+	- slice: "[]model.Foo"
+- **Version** - version number, for schema change.
+- **TTL** - redis ttl using go time.
+
+Also in `schema.go`, there is an `imports` part:
+```go
+Imports = []string{}
+```
+If you use structs in `To`, don't forget to add struct path here, so code generation can work:
+```go
+// we have model.Foo struct in schema
+Imports = []string{"your_project/model"}
 ```

@@ -210,7 +210,7 @@ client.SimpleCacheStore.InvalidAll(ctx, 1)
 ## Schema Definition
 Each schema has 5 fields:
 - **Name** - store name, will be struct name in generated code, capital first.
-- **Key** - key with variable using **go template syntax**, part of redis key. Variable name will be used in code generation.
+- **Key** - key with variable using **go template syntax**, Variable name will be used in code generation.
 - **To** - cached value type string, will be used in code generation. Examples:
 	- string: `"string"`
 	- struct: `"model.Foo"`
@@ -219,7 +219,16 @@ Each schema has 5 fields:
 - **Version** - version number, for schema change.
 - **TTL** - redis ttl using go time.
 
-Also in `schema.go`, there is an `imports` part:
+Duplicate name/key is not allowed.
+
+Full redis key has 3 parts: **prefix** + **schema key** + **version**.
+Schema Key`category:{{.categoryID}}:book:{{.bookID}}` with prefix `cacheme`, version 1 will generate key:
+```
+cacheme:category:1:book:3:v1
+```
+Also you will see `categoryID` and `bookID` in generated code, as fetch func params.
+
+In `schema.go`, there is an `imports` part:
 ```go
 Imports = []string{}
 ```

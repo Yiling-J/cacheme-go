@@ -189,7 +189,6 @@ func generateCmd() *cobra.Command {
 			}
 
 			pkg := pkgs[0].ID
-			fmt.Println(pkgs, pkgs[0].ID, pkgs[0].Name, pkgs[0].Module)
 
 			tmpl, err := template.New("generare").Parse(generateCode)
 			if err != nil {

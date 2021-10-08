@@ -438,8 +438,8 @@ func TestCacheKey(t *testing.T) {
 	keys, err := client.Redis().Keys(ctx, "*").Result()
 	require.Nil(t, err)
 	expected := []string{
-		"cacheme:simple:foo:1",   // cache key
-		"cacheme:group:Simple:1", // group key
+		"cacheme:simple:foo:v1",   // cache key
+		"cacheme:group:Simple:v1", // group key
 	}
 	require.ElementsMatch(t, keys, expected)
 

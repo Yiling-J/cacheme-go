@@ -142,7 +142,7 @@ func (s *{{$NodeName}}Cache) Clone() *{{$NodeName}}Cache {
 }
 
 func (s *{{$NodeName}}Cache) KeyTemplate() string {
-     return "{{.Key}}" + ":{{.Version}}"
+     return "{{.Key}}" + ":v{{.Version}}"
 }
 
 func (s *{{$NodeName}}Cache) Key(m map[string]string) (string, error) {
@@ -154,11 +154,11 @@ func (s *{{$NodeName}}Cache) Key(m map[string]string) (string, error) {
 }
 
 func (s *{{$NodeName}}Cache) Group() string {
-	return "{{$Prefix}}" + ":group:" + s.tag + ":{{.Version}}"
+	return "{{$Prefix}}" + ":group:" + s.tag + ":v{{.Version}}"
 }
 
 func (s *{{$NodeName}}Cache) versionedGroup(v int) string {
-	return "{{$Prefix}}" + ":group:" + s.tag + ":" + strconv.Itoa(v)
+	return "{{$Prefix}}" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
 }
 
 func (s *{{$NodeName}}Cache) AddMemoLock() error {

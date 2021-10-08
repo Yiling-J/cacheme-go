@@ -183,7 +183,7 @@ func (s *simpleCache) Clone() *simpleCache {
 }
 
 func (s *simpleCache) KeyTemplate() string {
-	return "simple:{{.ID}}" + ":1"
+	return "simple:{{.ID}}" + ":v1"
 }
 
 func (s *simpleCache) Key(m map[string]string) (string, error) {
@@ -195,11 +195,11 @@ func (s *simpleCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *simpleCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":1"
+	return "cacheme" + ":group:" + s.tag + ":v1"
 }
 
 func (s *simpleCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":" + strconv.Itoa(v)
+	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
 }
 
 func (s *simpleCache) AddMemoLock() error {
@@ -429,7 +429,7 @@ func (s *fooMapCache) Clone() *fooMapCache {
 }
 
 func (s *fooMapCache) KeyTemplate() string {
-	return "foomap:{{.ID}}" + ":1"
+	return "foomap:{{.ID}}" + ":v1"
 }
 
 func (s *fooMapCache) Key(m map[string]string) (string, error) {
@@ -441,11 +441,11 @@ func (s *fooMapCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooMapCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":1"
+	return "cacheme" + ":group:" + s.tag + ":v1"
 }
 
 func (s *fooMapCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":" + strconv.Itoa(v)
+	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
 }
 
 func (s *fooMapCache) AddMemoLock() error {
@@ -675,7 +675,7 @@ func (s *fooCache) Clone() *fooCache {
 }
 
 func (s *fooCache) KeyTemplate() string {
-	return "foo:{{.ID}}:info" + ":1"
+	return "foo:{{.ID}}:info" + ":v1"
 }
 
 func (s *fooCache) Key(m map[string]string) (string, error) {
@@ -687,11 +687,11 @@ func (s *fooCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":1"
+	return "cacheme" + ":group:" + s.tag + ":v1"
 }
 
 func (s *fooCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":" + strconv.Itoa(v)
+	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
 }
 
 func (s *fooCache) AddMemoLock() error {
@@ -921,7 +921,7 @@ func (s *fooPCache) Clone() *fooPCache {
 }
 
 func (s *fooPCache) KeyTemplate() string {
-	return "foop:{{.ID}}:info" + ":1"
+	return "foop:{{.ID}}:info" + ":v1"
 }
 
 func (s *fooPCache) Key(m map[string]string) (string, error) {
@@ -933,11 +933,11 @@ func (s *fooPCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooPCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":1"
+	return "cacheme" + ":group:" + s.tag + ":v1"
 }
 
 func (s *fooPCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":" + strconv.Itoa(v)
+	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
 }
 
 func (s *fooPCache) AddMemoLock() error {
@@ -1167,7 +1167,7 @@ func (s *fooListCache) Clone() *fooListCache {
 }
 
 func (s *fooListCache) KeyTemplate() string {
-	return "foo:list:{{.ID}}" + ":1"
+	return "foo:list:{{.ID}}" + ":v1"
 }
 
 func (s *fooListCache) Key(m map[string]string) (string, error) {
@@ -1179,11 +1179,11 @@ func (s *fooListCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooListCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":1"
+	return "cacheme" + ":group:" + s.tag + ":v1"
 }
 
 func (s *fooListCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":" + strconv.Itoa(v)
+	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
 }
 
 func (s *fooListCache) AddMemoLock() error {
@@ -1413,7 +1413,7 @@ func (s *fooListPCache) Clone() *fooListPCache {
 }
 
 func (s *fooListPCache) KeyTemplate() string {
-	return "foo:listp:{{.ID}}" + ":1"
+	return "foo:listp:{{.ID}}" + ":v1"
 }
 
 func (s *fooListPCache) Key(m map[string]string) (string, error) {
@@ -1425,11 +1425,11 @@ func (s *fooListPCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooListPCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":1"
+	return "cacheme" + ":group:" + s.tag + ":v1"
 }
 
 func (s *fooListPCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":" + strconv.Itoa(v)
+	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
 }
 
 func (s *fooListPCache) AddMemoLock() error {

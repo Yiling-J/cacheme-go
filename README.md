@@ -219,21 +219,22 @@ Each schema has 5 fields:
 - **Version** - version number, for schema change.
 - **TTL** - redis ttl using go time.
 
-Duplicate name/key is not allowed.
+#### Notes:
+- Duplicate name/key is not allowed.
 
-Full redis key has 3 parts: **prefix** + **schema key** + **version**.
-Schema Key`category:{{.categoryID}}:book:{{.bookID}}` with prefix `cacheme`, version 1 will generate key:
-```
-cacheme:category:1:book:3:v1
-```
-Also you will see `categoryID` and `bookID` in generated code, as fetch func params.
+- Full redis key has 3 parts: **prefix** + **schema key** + **version**.
+	Schema Key`category:{{.categoryID}}:book:{{.bookID}}` with prefix `cacheme`, version 1 will generate key:
+	```
+	cacheme:category:1:book:3:v1
+	```
+	Also you will see `categoryID` and `bookID` in generated code, as fetch func params.
 
-In `schema.go`, there is an `imports` part:
-```go
-Imports = []string{}
-```
-If you use structs in `To`, don't forget to add struct path here, so code generation can work:
-```go
-// we have model.Foo struct in schema
-Imports = []string{"your_project/model"}
-```
+- In `schema.go`, there is an `imports` part:
+	```go
+	Imports = []string{}
+	```
+	If you use structs in `To`, don't forget to add struct path here, so code generation can work:
+	```go
+	// we have model.Foo struct in schema
+	Imports = []string{"your_project/model"}
+	```

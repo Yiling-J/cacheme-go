@@ -2,7 +2,7 @@
 ![example workflow](https://github.com/Yiling-J/cacheme-go/actions/workflows/go.yml/badge.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/Yiling-J/cacheme-go?style=flat-square)
 
-[English](README.md) | [中文](README_zh.md) 
+[English](README.md) | [中文](README_zh.md)
 
 - **Statically Typed** - 100% statically typed using code generation.
 - **Scale Efficiently** - thundering herd protection via pub/sub.
@@ -10,6 +10,8 @@
 - **Memoize** - dynamic key generation based on code generation.
 - **Versioning** - cache versioning for better management.
 - **Pipeline** - reduce io cost by redis pipeline.
+
+Read this first: [Caches, Promises and Locks](https://redis.com/blog/caches-promises-locks/). This is how caching part works in cacheme.
 
 ## Installation
 ```console

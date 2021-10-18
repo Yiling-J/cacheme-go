@@ -220,12 +220,12 @@ Each schema has 5 fields:
 	- slice: `"[]model.Foo"`
 - **Version** - version number, for schema change.
 - **TTL** - redis ttl using go time.
-- **Singleflight** - true/flase, if true, cocurrency requests to **same key** on **same machine** will call redis only once 
+- **Singleflight** - bool, if `true`, cocurrency requests to **same key** on **same machine** will call Redis only once 
 
 #### Notes:
 - Duplicate name/key is not allowed.
 
-- If set `Singleflight` to true, `redis GET` command will be wrapped in a `singleflight`(golang.org/x/sync/singleflight), so cocurrency requests of same key to redis will call redis only once. This option only works for `store.Get` method, not `store.GetP`. Make it optional because in some situations, for example aws Lambda, `singleflight` is useless.
+- If set `Singleflight` to `true`, Redis `GET` command will be wrapped in a [**singleflight**](https://pkg.go.dev/golang.org/x/sync/singleflight), so **cocurrency requests of same key** will call Redis only once. This option only works for `store.Get` method, not `store.GetP`. Make it optional because in some situations, for example aws Lambda, `singleflight` is useless.
 
 - Full redis key has 3 parts: **prefix** + **schema key** + **version**.
 	Schema Key`category:{{.categoryID}}:book:{{.bookID}}` with prefix `cacheme`, version 1 will generate key:

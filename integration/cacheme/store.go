@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"sync"
 	"text/template"
 	"time"
 
@@ -41,22 +40,22 @@ func (c *Client) Redis() cacheme.RedisClient {
 func New(redis cacheme.RedisClient) *Client {
 	client := &Client{redis: redis}
 
-	client.SimpleCacheStore = SimpleCacheStore.Clone()
+	client.SimpleCacheStore = SimpleCacheStore.Clone(client.redis)
 	client.SimpleCacheStore.SetClient(client)
 
-	client.FooMapCacheStore = FooMapCacheStore.Clone()
+	client.FooMapCacheStore = FooMapCacheStore.Clone(client.redis)
 	client.FooMapCacheStore.SetClient(client)
 
-	client.FooCacheStore = FooCacheStore.Clone()
+	client.FooCacheStore = FooCacheStore.Clone(client.redis)
 	client.FooCacheStore.SetClient(client)
 
-	client.FooPCacheStore = FooPCacheStore.Clone()
+	client.FooPCacheStore = FooPCacheStore.Clone(client.redis)
 	client.FooPCacheStore.SetClient(client)
 
-	client.FooListCacheStore = FooListCacheStore.Clone()
+	client.FooListCacheStore = FooListCacheStore.Clone(client.redis)
 	client.FooListCacheStore.SetClient(client)
 
-	client.FooListPCacheStore = FooListPCacheStore.Clone()
+	client.FooListPCacheStore = FooListPCacheStore.Clone(client.redis)
 	client.FooListPCacheStore.SetClient(client)
 
 	return client
@@ -65,22 +64,22 @@ func New(redis cacheme.RedisClient) *Client {
 func NewCluster(redis cacheme.RedisClient) *Client {
 	client := &Client{redis: redis, cluster: true}
 
-	client.SimpleCacheStore = SimpleCacheStore.Clone()
+	client.SimpleCacheStore = SimpleCacheStore.Clone(client.redis)
 	client.SimpleCacheStore.SetClient(client)
 
-	client.FooMapCacheStore = FooMapCacheStore.Clone()
+	client.FooMapCacheStore = FooMapCacheStore.Clone(client.redis)
 	client.FooMapCacheStore.SetClient(client)
 
-	client.FooCacheStore = FooCacheStore.Clone()
+	client.FooCacheStore = FooCacheStore.Clone(client.redis)
 	client.FooCacheStore.SetClient(client)
 
-	client.FooPCacheStore = FooPCacheStore.Clone()
+	client.FooPCacheStore = FooPCacheStore.Clone(client.redis)
 	client.FooPCacheStore.SetClient(client)
 
-	client.FooListCacheStore = FooListCacheStore.Clone()
+	client.FooListCacheStore = FooListCacheStore.Clone(client.redis)
 	client.FooListCacheStore.SetClient(client)
 
-	client.FooListPCacheStore = FooListPCacheStore.Clone()
+	client.FooListPCacheStore = FooListPCacheStore.Clone(client.redis)
 	client.FooListPCacheStore.SetClient(client)
 
 	return client
@@ -109,7 +108,6 @@ var stores = []cacheme.CacheStore{
 type simpleCache struct {
 	Fetch  func(ctx context.Context, ID string) (string, error)
 	tag    string
-	once   sync.Once
 	memo   *cacheme.RedisMemoLock
 	client *Client
 }
@@ -177,9 +175,17 @@ func (s *simpleCache) SetClient(c *Client) {
 	s.client = c
 }
 
-func (s *simpleCache) Clone() *simpleCache {
-	new := *s
-	return &new
+func (s *simpleCache) Clone(r cacheme.RedisClient) *simpleCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+	return new
 }
 
 func (s *simpleCache) KeyTemplate() string {
@@ -247,16 +253,6 @@ func (s *simpleCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 }
 
 func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
-
-	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		s.memo = lock
-	})
-
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -355,7 +351,6 @@ func (s *simpleCache) InvalidAll(ctx context.Context, version int) error {
 type fooMapCache struct {
 	Fetch  func(ctx context.Context, ID string) (map[string]string, error)
 	tag    string
-	once   sync.Once
 	memo   *cacheme.RedisMemoLock
 	client *Client
 }
@@ -423,9 +418,17 @@ func (s *fooMapCache) SetClient(c *Client) {
 	s.client = c
 }
 
-func (s *fooMapCache) Clone() *fooMapCache {
-	new := *s
-	return &new
+func (s *fooMapCache) Clone(r cacheme.RedisClient) *fooMapCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+	return new
 }
 
 func (s *fooMapCache) KeyTemplate() string {
@@ -493,16 +496,6 @@ func (s *fooMapCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 }
 
 func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, error) {
-
-	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		s.memo = lock
-	})
-
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -601,7 +594,6 @@ func (s *fooMapCache) InvalidAll(ctx context.Context, version int) error {
 type fooCache struct {
 	Fetch  func(ctx context.Context, ID string) (model.Foo, error)
 	tag    string
-	once   sync.Once
 	memo   *cacheme.RedisMemoLock
 	client *Client
 }
@@ -669,9 +661,17 @@ func (s *fooCache) SetClient(c *Client) {
 	s.client = c
 }
 
-func (s *fooCache) Clone() *fooCache {
-	new := *s
-	return &new
+func (s *fooCache) Clone(r cacheme.RedisClient) *fooCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+	return new
 }
 
 func (s *fooCache) KeyTemplate() string {
@@ -739,16 +739,6 @@ func (s *fooCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID strin
 }
 
 func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
-
-	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		s.memo = lock
-	})
-
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -847,7 +837,6 @@ func (s *fooCache) InvalidAll(ctx context.Context, version int) error {
 type fooPCache struct {
 	Fetch  func(ctx context.Context, ID string) (*model.Foo, error)
 	tag    string
-	once   sync.Once
 	memo   *cacheme.RedisMemoLock
 	client *Client
 }
@@ -915,9 +904,17 @@ func (s *fooPCache) SetClient(c *Client) {
 	s.client = c
 }
 
-func (s *fooPCache) Clone() *fooPCache {
-	new := *s
-	return &new
+func (s *fooPCache) Clone(r cacheme.RedisClient) *fooPCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+	return new
 }
 
 func (s *fooPCache) KeyTemplate() string {
@@ -985,16 +982,6 @@ func (s *fooPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID stri
 }
 
 func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
-
-	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		s.memo = lock
-	})
-
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -1093,7 +1080,6 @@ func (s *fooPCache) InvalidAll(ctx context.Context, version int) error {
 type fooListCache struct {
 	Fetch  func(ctx context.Context, ID string) ([]model.Foo, error)
 	tag    string
-	once   sync.Once
 	memo   *cacheme.RedisMemoLock
 	client *Client
 }
@@ -1161,9 +1147,17 @@ func (s *fooListCache) SetClient(c *Client) {
 	s.client = c
 }
 
-func (s *fooListCache) Clone() *fooListCache {
-	new := *s
-	return &new
+func (s *fooListCache) Clone(r cacheme.RedisClient) *fooListCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+	return new
 }
 
 func (s *fooListCache) KeyTemplate() string {
@@ -1231,16 +1225,6 @@ func (s *fooListCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID s
 }
 
 func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) {
-
-	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		s.memo = lock
-	})
-
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -1339,7 +1323,6 @@ func (s *fooListCache) InvalidAll(ctx context.Context, version int) error {
 type fooListPCache struct {
 	Fetch  func(ctx context.Context, ID string) ([]*model.Foo, error)
 	tag    string
-	once   sync.Once
 	memo   *cacheme.RedisMemoLock
 	client *Client
 }
@@ -1407,9 +1390,17 @@ func (s *fooListPCache) SetClient(c *Client) {
 	s.client = c
 }
 
-func (s *fooListPCache) Clone() *fooListPCache {
-	new := *s
-	return &new
+func (s *fooListPCache) Clone(r cacheme.RedisClient) *fooListPCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+	return new
 }
 
 func (s *fooListPCache) KeyTemplate() string {
@@ -1477,16 +1468,6 @@ func (s *fooListPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID 
 }
 
 func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error) {
-
-	s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		s.memo = lock
-	})
-
 	params := make(map[string]string)
 
 	params["ID"] = ID

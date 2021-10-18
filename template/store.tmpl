@@ -7,7 +7,6 @@ import (
 	"text/template"
 	"context"
 	"errors"
-	"sync"
 	"fmt"
 	"strconv"
 
@@ -34,7 +33,7 @@ func (c *Client) Redis() cacheme.RedisClient {
 func New(redis cacheme.RedisClient) *Client {
      client := &Client{redis: redis}
      {{range .Stores}}
-     client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone()
+     client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone(client.redis)
      client.{{.Name}}CacheStore.SetClient(client)
      {{end}}
      return client
@@ -43,7 +42,7 @@ func New(redis cacheme.RedisClient) *Client {
 func NewCluster(redis cacheme.RedisClient) *Client {
      client := &Client{redis: redis, cluster: true}
      {{range .Stores}}
-     client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone()
+     client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone(client.redis)
      client.{{.Name}}CacheStore.SetClient(client)
      {{end}}
      return client
@@ -68,7 +67,6 @@ var stores = []cacheme.CacheStore{
 type {{$NodeName}}Cache struct {
      Fetch func(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.ToType}}, error)
      tag string
-     once sync.Once
      memo *cacheme.RedisMemoLock
      client *Client
 }
@@ -136,9 +134,17 @@ func (s *{{$NodeName}}Cache) SetClient(c *Client) {
      s.client = c
 }
 
-func (s *{{$NodeName}}Cache) Clone() *{{$NodeName}}Cache {
-     new := *s
-     return &new
+func (s *{{$NodeName}}Cache) Clone(r cacheme.RedisClient) *{{$NodeName}}Cache {
+     value := *s
+     new := &value
+     lock, err := cacheme.NewRedisMemoLock(
+     	   context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+     )
+     if err != nil {
+     	fmt.Println(err)
+     }
+     new.memo = lock
+     return new
 }
 
 func (s *{{$NodeName}}Cache) KeyTemplate() string {
@@ -209,16 +215,6 @@ func (s *{{$NodeName}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline
 }
 
 func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.ToType}}, error) {
-
-     s.once.Do(func() {
-		lock, err := cacheme.NewRedisMemoLock(context.TODO(), "{{$Prefix}}", s.client.redis, s.tag, 5*time.Second)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		s.memo = lock
-     })
-
      params := make(map[string]string)
      {{range .Vars}}
      params["{{.}}"] = {{.}}

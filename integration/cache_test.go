@@ -88,6 +88,7 @@ func RestCounter() {
 	fetcher.FooMapCacheStoreCounter = 0
 	fetcher.FooPCacheStoreCounter = 0
 	fetcher.SimpleCacheStoreCounter = 0
+	fetcher.SimpleFlightCacheStoreCounter = 0
 }
 
 func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
@@ -140,6 +141,7 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 
 			stores := []cachemeo.CacheStore{
 				client.SimpleCacheStore,
+				client.SimpleFlightCacheStore,
 				client.FooMapCacheStore,
 				client.FooPCacheStore,
 				client.FooCacheStore,
@@ -178,6 +180,10 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Nil(t, err)
 			require.Equal(t, tc.expectedFooListP, r6)
 
+			r7, err := client.SimpleFlightCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, tc.expectedSimple, r7)
+
 			// test get with cache, counter should be 1
 			r1, err = client.SimpleCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)
@@ -209,6 +215,11 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Equal(t, tc.expectedFooListP, r6)
 			require.Equal(t, 1, fetcher.FooListPCacheStoreCounter)
 
+			r7, err = client.SimpleFlightCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, tc.expectedSimple, r7)
+			require.Equal(t, 1, fetcher.SimpleFlightCacheStoreCounter)
+
 			// test invalid
 			err = client.SimpleCacheStore.Invalid(ctx, tc.id)
 			require.Nil(t, err)
@@ -228,6 +239,8 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			err = client.FooListCacheStore.InvalidAll(ctx, 1)
 			require.Nil(t, err)
 			err = client.FooListPCacheStore.InvalidAll(ctx, 1)
+			require.Nil(t, err)
+			err = client.SimpleFlightCacheStore.InvalidAll(ctx, 1)
 			require.Nil(t, err)
 
 			// test get again,  counter should be 2 now
@@ -254,6 +267,10 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			_, err = client.FooListPCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)
 			require.Equal(t, 2, fetcher.FooListPCacheStoreCounter)
+
+			_, err = client.SimpleFlightCacheStore.Get(ctx, tc.id)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.SimpleFlightCacheStoreCounter)
 
 			// test cache warm
 			err = client.SimpleCacheStore.InvalidAll(ctx, 1)

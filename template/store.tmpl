@@ -144,6 +144,7 @@ func (s *{{$NodeName}}Cache) Clone(r cacheme.RedisClient) *{{$NodeName}}Cache {
      	fmt.Println(err)
      }
      new.memo = lock
+
      return new
 }
 
@@ -228,8 +229,12 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      }
 
      memo := s.memo
-
-     res, err := memo.GetCached(ctx, key)
+     var res []byte
+     if {{.Singleflight}} {
+     	res, err = memo.GetCachedSingle(ctx, key)
+     } else {
+       res, err = memo.GetCached(ctx, key)
+     }
      if err == nil {
 	err = cacheme.Unmarshal(res, &t)
 	return t, err

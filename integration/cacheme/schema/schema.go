@@ -57,5 +57,13 @@ var (
 			Version: 1,
 			TTL:     5 * time.Minute,
 		},
+		{
+			Name:         "SimpleFlight",
+			Key:          "simple:flight:{{.ID}}",
+			To:           "string",
+			Version:      1,
+			TTL:          5 * time.Minute,
+			Singleflight: true,
+		},
 	}
 )

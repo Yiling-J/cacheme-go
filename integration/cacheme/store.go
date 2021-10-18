@@ -29,6 +29,8 @@ type Client struct {
 
 	FooListPCacheStore *fooListPCache
 
+	SimpleFlightCacheStore *simpleFlightCache
+
 	redis   cacheme.RedisClient
 	cluster bool
 }
@@ -58,6 +60,9 @@ func New(redis cacheme.RedisClient) *Client {
 	client.FooListPCacheStore = FooListPCacheStore.Clone(client.redis)
 	client.FooListPCacheStore.SetClient(client)
 
+	client.SimpleFlightCacheStore = SimpleFlightCacheStore.Clone(client.redis)
+	client.SimpleFlightCacheStore.SetClient(client)
+
 	return client
 }
 
@@ -82,6 +87,9 @@ func NewCluster(redis cacheme.RedisClient) *Client {
 	client.FooListPCacheStore = FooListPCacheStore.Clone(client.redis)
 	client.FooListPCacheStore.SetClient(client)
 
+	client.SimpleFlightCacheStore = SimpleFlightCacheStore.Clone(client.redis)
+	client.SimpleFlightCacheStore.SetClient(client)
+
 	return client
 }
 
@@ -103,6 +111,8 @@ var stores = []cacheme.CacheStore{
 	FooListCacheStore,
 
 	FooListPCacheStore,
+
+	SimpleFlightCacheStore,
 }
 
 type simpleCache struct {
@@ -185,6 +195,7 @@ func (s *simpleCache) Clone(r cacheme.RedisClient) *simpleCache {
 		fmt.Println(err)
 	}
 	new.memo = lock
+
 	return new
 }
 
@@ -265,8 +276,12 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 	}
 
 	memo := s.memo
-
-	res, err := memo.GetCached(ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.GetCachedSingle(ctx, key)
+	} else {
+		res, err = memo.GetCached(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -428,6 +443,7 @@ func (s *fooMapCache) Clone(r cacheme.RedisClient) *fooMapCache {
 		fmt.Println(err)
 	}
 	new.memo = lock
+
 	return new
 }
 
@@ -508,8 +524,12 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 	}
 
 	memo := s.memo
-
-	res, err := memo.GetCached(ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.GetCachedSingle(ctx, key)
+	} else {
+		res, err = memo.GetCached(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -671,6 +691,7 @@ func (s *fooCache) Clone(r cacheme.RedisClient) *fooCache {
 		fmt.Println(err)
 	}
 	new.memo = lock
+
 	return new
 }
 
@@ -751,8 +772,12 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 	}
 
 	memo := s.memo
-
-	res, err := memo.GetCached(ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.GetCachedSingle(ctx, key)
+	} else {
+		res, err = memo.GetCached(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -914,6 +939,7 @@ func (s *fooPCache) Clone(r cacheme.RedisClient) *fooPCache {
 		fmt.Println(err)
 	}
 	new.memo = lock
+
 	return new
 }
 
@@ -994,8 +1020,12 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 	}
 
 	memo := s.memo
-
-	res, err := memo.GetCached(ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.GetCachedSingle(ctx, key)
+	} else {
+		res, err = memo.GetCached(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1157,6 +1187,7 @@ func (s *fooListCache) Clone(r cacheme.RedisClient) *fooListCache {
 		fmt.Println(err)
 	}
 	new.memo = lock
+
 	return new
 }
 
@@ -1237,8 +1268,12 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 	}
 
 	memo := s.memo
-
-	res, err := memo.GetCached(ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.GetCachedSingle(ctx, key)
+	} else {
+		res, err = memo.GetCached(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1400,6 +1435,7 @@ func (s *fooListPCache) Clone(r cacheme.RedisClient) *fooListPCache {
 		fmt.Println(err)
 	}
 	new.memo = lock
+
 	return new
 }
 
@@ -1480,8 +1516,12 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 	}
 
 	memo := s.memo
-
-	res, err := memo.GetCached(ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.GetCachedSingle(ctx, key)
+	} else {
+		res, err = memo.GetCached(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1555,6 +1595,254 @@ func (s *fooListPCache) Invalid(ctx context.Context, ID string) error {
 }
 
 func (s *fooListPCache) InvalidAll(ctx context.Context, version int) error {
+	group := s.versionedGroup(version)
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
+	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
+
+}
+
+type simpleFlightCache struct {
+	Fetch  func(ctx context.Context, ID string) (string, error)
+	tag    string
+	memo   *cacheme.RedisMemoLock
+	client *Client
+}
+
+type SimpleFlightPromise struct {
+	executed     chan bool
+	redisPromise *redis.StringCmd
+	result       string
+	error        error
+	store        *simpleFlightCache
+	ctx          context.Context
+}
+
+func (p *SimpleFlightPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+	defer cp.Wg.Done()
+	var t string
+	memo := p.store.memo
+
+	<-cp.Executed
+	value, err := p.redisPromise.Bytes()
+	if err == nil {
+		err = cacheme.Unmarshal(value, &t)
+		p.result, p.error = t, err
+		return
+	}
+
+	resourceLock, err := memo.Lock(p.ctx, key)
+	if err != nil {
+		p.error = err
+		return
+	}
+
+	if resourceLock {
+		value, err := p.store.Fetch(
+			p.ctx,
+			ID)
+		if err != nil {
+			p.error = err
+			return
+		}
+		p.result = value
+		packed, err := cacheme.Marshal(value)
+		if err == nil {
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
+		}
+		p.error = err
+		return
+	}
+
+	res, err := memo.Wait(p.ctx, key)
+	if err == nil {
+		err = cacheme.Unmarshal(res, &t)
+	}
+	p.result, p.error = t, err
+}
+
+func (p *SimpleFlightPromise) Result() (string, error) {
+	return p.result, p.error
+}
+
+var SimpleFlightCacheStore = &simpleFlightCache{tag: "SimpleFlight"}
+
+func (s *simpleFlightCache) SetClient(c *Client) {
+	s.client = c
+}
+
+func (s *simpleFlightCache) Clone(r cacheme.RedisClient) *simpleFlightCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+
+	return new
+}
+
+func (s *simpleFlightCache) KeyTemplate() string {
+	return "simple:flight:{{.ID}}" + ":v1"
+}
+
+func (s *simpleFlightCache) Key(m map[string]string) (string, error) {
+	t := template.Must(template.New("").Parse(s.KeyTemplate()))
+	t = t.Option("missingkey=zero")
+	var tpl bytes.Buffer
+	err := t.Execute(&tpl, m)
+	return tpl.String(), err
+}
+
+func (s *simpleFlightCache) Group() string {
+	return "cacheme" + ":group:" + s.tag + ":v1"
+}
+
+func (s *simpleFlightCache) versionedGroup(v int) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+}
+
+func (s *simpleFlightCache) AddMemoLock() error {
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
+	if err != nil {
+		return err
+	}
+
+	s.memo = lock
+	return nil
+}
+
+func (s *simpleFlightCache) Initialized() bool {
+	return s.Fetch != nil
+}
+
+func (s *simpleFlightCache) Tag() string {
+	return s.tag
+}
+
+func (s *simpleFlightCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*SimpleFlightPromise, error) {
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheme := s.memo
+
+	promise := &SimpleFlightPromise{
+		executed: pp.Executed,
+		ctx:      ctx,
+		store:    s,
+	}
+
+	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
+	promise.redisPromise = wait
+	pp.Wg.Add(1)
+	go promise.WaitExecute(
+		pp, key, ID)
+	return promise, nil
+}
+
+func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) {
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t string
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	memo := s.memo
+	var res []byte
+	if true {
+		res, err = memo.GetCachedSingle(ctx, key)
+	} else {
+		res, err = memo.GetCached(ctx, key)
+	}
+	if err == nil {
+		err = cacheme.Unmarshal(res, &t)
+		return t, err
+	}
+
+	if err != redis.Nil {
+		return t, errors.New("")
+	}
+
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
+	}
+
+	if resourceLock {
+		value, err := s.Fetch(ctx, ID)
+		if err != nil {
+			return value, err
+		}
+		packed, err := cacheme.Marshal(value)
+		if err == nil {
+			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(ctx, s.Group(), key)
+		}
+		return value, err
+	}
+
+	res, err = memo.Wait(ctx, key)
+	if err == nil {
+		err = cacheme.Unmarshal(res, &t)
+		return t, err
+	}
+	return t, err
+}
+
+func (s *simpleFlightCache) Update(ctx context.Context, ID string) error {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return err
+	}
+
+	value, err := s.Fetch(ctx, ID)
+	if err != nil {
+		return err
+	}
+	packed, err := cacheme.Marshal(value)
+	if err == nil {
+		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
+		s.memo.AddGroup(ctx, s.Group(), key)
+	}
+	return err
+}
+
+func (s *simpleFlightCache) Invalid(ctx context.Context, ID string) error {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return err
+	}
+	return s.memo.DeleteCache(ctx, key)
+
+}
+
+func (s *simpleFlightCache) InvalidAll(ctx context.Context, version int) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)

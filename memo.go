@@ -7,6 +7,8 @@ import (
 	"errors"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/go-redis/redis/v8"
 	uuid "github.com/satori/go.uuid"
 )
@@ -48,6 +50,7 @@ type RedisMemoLock struct {
 	subCh         chan subRequest
 	notifCh       <-chan *redis.Message
 	subscriptions map[string][]chan []byte
+	group         singleflight.Group
 }
 
 func (r *RedisMemoLock) dispatch() {
@@ -119,6 +122,7 @@ func NewRedisMemoLock(ctx context.Context, prefix string, client RedisClient, re
 		subCh:         make(chan subRequest),
 		notifCh:       pubsub.Channel(),
 		subscriptions: make(map[string][]chan []byte),
+		group:         singleflight.Group{},
 	}
 
 	// Start the dispatch loop
@@ -136,6 +140,18 @@ func (r *RedisMemoLock) GetCached(ctx context.Context, key string) ([]byte, erro
 	resourceID := r.prefix + ":" + key
 
 	return r.client.Get(ctx, resourceID).Bytes()
+}
+
+// GetCachedSingle is singleflight version of GetCached
+func (r *RedisMemoLock) GetCachedSingle(ctx context.Context, key string) ([]byte, error) {
+	resourceID := r.prefix + ":" + key
+
+	respBytes, err, _ := r.group.Do(resourceID, func() (interface{}, error) {
+		return r.client.Get(ctx, resourceID).Bytes()
+	})
+
+	resp := respBytes.([]byte)
+	return resp, err
 }
 
 func (r *RedisMemoLock) DeleteCache(ctx context.Context, key string) error {

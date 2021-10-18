@@ -10,13 +10,14 @@ import (
 )
 
 var (
-	Tester                    string
-	SimpleCacheStoreCounter   int
-	FooCacheStoreCounter      int
-	FooPCacheStoreCounter     int
-	FooMapCacheStoreCounter   int
-	FooListCacheStoreCounter  int
-	FooListPCacheStoreCounter int
+	Tester                        string
+	SimpleCacheStoreCounter       int
+	FooCacheStoreCounter          int
+	FooPCacheStoreCounter         int
+	FooMapCacheStoreCounter       int
+	FooListCacheStoreCounter      int
+	FooListPCacheStoreCounter     int
+	SimpleFlightCacheStoreCounter int
 
 	mu sync.Mutex
 )
@@ -26,6 +27,20 @@ func Setup() {
 	cacheme.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
 		mu.Lock()
 		SimpleCacheStoreCounter++
+		mu.Unlock()
+
+		if ID == "" {
+			return "", nil
+		}
+		if ID == "E" {
+			return "", errors.New("")
+		}
+		return ID + Tester, nil
+	}
+
+	cacheme.SimpleFlightCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
+		mu.Lock()
+		SimpleFlightCacheStoreCounter++
 		mu.Unlock()
 
 		if ID == "" {

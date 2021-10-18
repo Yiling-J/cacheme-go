@@ -80,12 +80,13 @@ func NewPipeline(client RedisClient) *CachePipeline {
 }
 
 type StoreSchema struct {
-	Name    string
-	Key     string
-	To      string
-	Version int
-	Vars    []string
-	TTL     time.Duration
+	Name         string
+	Key          string
+	To           string
+	Version      int
+	Vars         []string
+	TTL          time.Duration
+	Singleflight bool
 }
 
 func (s *StoreSchema) ToType() string {

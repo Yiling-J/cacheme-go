@@ -29,6 +29,8 @@ type Client struct {
 
 	FooListPCacheStore *fooListPCache
 
+	FooMapSCacheStore *fooMapSCache
+
 	SimpleFlightCacheStore *simpleFlightCache
 
 	redis   cacheme.RedisClient
@@ -60,6 +62,9 @@ func New(redis cacheme.RedisClient) *Client {
 	client.FooListPCacheStore = FooListPCacheStore.Clone(client.redis)
 	client.FooListPCacheStore.SetClient(client)
 
+	client.FooMapSCacheStore = FooMapSCacheStore.Clone(client.redis)
+	client.FooMapSCacheStore.SetClient(client)
+
 	client.SimpleFlightCacheStore = SimpleFlightCacheStore.Clone(client.redis)
 	client.SimpleFlightCacheStore.SetClient(client)
 
@@ -87,6 +92,9 @@ func NewCluster(redis cacheme.RedisClient) *Client {
 	client.FooListPCacheStore = FooListPCacheStore.Clone(client.redis)
 	client.FooListPCacheStore.SetClient(client)
 
+	client.FooMapSCacheStore = FooMapSCacheStore.Clone(client.redis)
+	client.FooMapSCacheStore.SetClient(client)
+
 	client.SimpleFlightCacheStore = SimpleFlightCacheStore.Clone(client.redis)
 	client.SimpleFlightCacheStore.SetClient(client)
 
@@ -111,6 +119,8 @@ var stores = []cacheme.CacheStore{
 	FooListCacheStore,
 
 	FooListPCacheStore,
+
+	FooMapSCacheStore,
 
 	SimpleFlightCacheStore,
 }
@@ -1595,6 +1605,254 @@ func (s *fooListPCache) Invalid(ctx context.Context, ID string) error {
 }
 
 func (s *fooListPCache) InvalidAll(ctx context.Context, version int) error {
+	group := s.versionedGroup(version)
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
+	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
+
+}
+
+type fooMapSCache struct {
+	Fetch  func(ctx context.Context, ID string) (map[model.Foo]model.Bar, error)
+	tag    string
+	memo   *cacheme.RedisMemoLock
+	client *Client
+}
+
+type FooMapSPromise struct {
+	executed     chan bool
+	redisPromise *redis.StringCmd
+	result       map[model.Foo]model.Bar
+	error        error
+	store        *fooMapSCache
+	ctx          context.Context
+}
+
+func (p *FooMapSPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+	defer cp.Wg.Done()
+	var t map[model.Foo]model.Bar
+	memo := p.store.memo
+
+	<-cp.Executed
+	value, err := p.redisPromise.Bytes()
+	if err == nil {
+		err = cacheme.Unmarshal(value, &t)
+		p.result, p.error = t, err
+		return
+	}
+
+	resourceLock, err := memo.Lock(p.ctx, key)
+	if err != nil {
+		p.error = err
+		return
+	}
+
+	if resourceLock {
+		value, err := p.store.Fetch(
+			p.ctx,
+			ID)
+		if err != nil {
+			p.error = err
+			return
+		}
+		p.result = value
+		packed, err := cacheme.Marshal(value)
+		if err == nil {
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
+		}
+		p.error = err
+		return
+	}
+
+	res, err := memo.Wait(p.ctx, key)
+	if err == nil {
+		err = cacheme.Unmarshal(res, &t)
+	}
+	p.result, p.error = t, err
+}
+
+func (p *FooMapSPromise) Result() (map[model.Foo]model.Bar, error) {
+	return p.result, p.error
+}
+
+var FooMapSCacheStore = &fooMapSCache{tag: "FooMapS"}
+
+func (s *fooMapSCache) SetClient(c *Client) {
+	s.client = c
+}
+
+func (s *fooMapSCache) Clone(r cacheme.RedisClient) *fooMapSCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+
+	return new
+}
+
+func (s *fooMapSCache) KeyTemplate() string {
+	return "foo:maps:{{.ID}}" + ":v1"
+}
+
+func (s *fooMapSCache) Key(m map[string]string) (string, error) {
+	t := template.Must(template.New("").Parse(s.KeyTemplate()))
+	t = t.Option("missingkey=zero")
+	var tpl bytes.Buffer
+	err := t.Execute(&tpl, m)
+	return tpl.String(), err
+}
+
+func (s *fooMapSCache) Group() string {
+	return "cacheme" + ":group:" + s.tag + ":v1"
+}
+
+func (s *fooMapSCache) versionedGroup(v int) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+}
+
+func (s *fooMapSCache) AddMemoLock() error {
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
+	if err != nil {
+		return err
+	}
+
+	s.memo = lock
+	return nil
+}
+
+func (s *fooMapSCache) Initialized() bool {
+	return s.Fetch != nil
+}
+
+func (s *fooMapSCache) Tag() string {
+	return s.tag
+}
+
+func (s *fooMapSCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooMapSPromise, error) {
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheme := s.memo
+
+	promise := &FooMapSPromise{
+		executed: pp.Executed,
+		ctx:      ctx,
+		store:    s,
+	}
+
+	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
+	promise.redisPromise = wait
+	pp.Wg.Add(1)
+	go promise.WaitExecute(
+		pp, key, ID)
+	return promise, nil
+}
+
+func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.Bar, error) {
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t map[model.Foo]model.Bar
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	memo := s.memo
+	var res []byte
+	if false {
+		res, err = memo.GetCachedSingle(ctx, key)
+	} else {
+		res, err = memo.GetCached(ctx, key)
+	}
+	if err == nil {
+		err = cacheme.Unmarshal(res, &t)
+		return t, err
+	}
+
+	if err != redis.Nil {
+		return t, errors.New("")
+	}
+
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
+	}
+
+	if resourceLock {
+		value, err := s.Fetch(ctx, ID)
+		if err != nil {
+			return value, err
+		}
+		packed, err := cacheme.Marshal(value)
+		if err == nil {
+			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(ctx, s.Group(), key)
+		}
+		return value, err
+	}
+
+	res, err = memo.Wait(ctx, key)
+	if err == nil {
+		err = cacheme.Unmarshal(res, &t)
+		return t, err
+	}
+	return t, err
+}
+
+func (s *fooMapSCache) Update(ctx context.Context, ID string) error {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return err
+	}
+
+	value, err := s.Fetch(ctx, ID)
+	if err != nil {
+		return err
+	}
+	packed, err := cacheme.Marshal(value)
+	if err == nil {
+		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
+		s.memo.AddGroup(ctx, s.Group(), key)
+	}
+	return err
+}
+
+func (s *fooMapSCache) Invalid(ctx context.Context, ID string) error {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return err
+	}
+	return s.memo.DeleteCache(ctx, key)
+
+}
+
+func (s *fooMapSCache) InvalidAll(ctx context.Context, version int) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)

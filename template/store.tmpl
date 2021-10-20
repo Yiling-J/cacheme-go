@@ -65,7 +65,7 @@ var stores = []cacheme.CacheStore{
 
 {{ $NodeName := .Name | FirstLower  }}
 type {{$NodeName}}Cache struct {
-     Fetch func(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.ToType}}, error)
+     Fetch func(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error)
      tag string
      memo *cacheme.RedisMemoLock
      client *Client
@@ -74,7 +74,7 @@ type {{$NodeName}}Cache struct {
 type {{.Name}}Promise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
-	result       {{.ToType}}
+	result       {{.Type}}
 	error        error
 	store        *{{$NodeName}}Cache
 	ctx          context.Context
@@ -82,7 +82,7 @@ type {{.Name}}Promise struct {
 
 func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {
 	defer cp.Wg.Done()
-	var t {{.ToType}}
+	var t {{.Type}}
 	memo := p.store.memo
 
 	<-cp.Executed
@@ -124,7 +124,7 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 	p.result, p.error = t, err
 }
 
-func (p *{{.Name}}Promise) Result() ({{.ToType}}, error) {
+func (p *{{.Name}}Promise) Result() ({{.Type}}, error) {
 	return p.result, p.error
 }
 
@@ -215,13 +215,13 @@ func (s *{{$NodeName}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline
 	return promise, nil
 }
 
-func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.ToType}}, error) {
+func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
      params := make(map[string]string)
      {{range .Vars}}
      params["{{.}}"] = {{.}}
      {{end}}
 
-     var t {{.ToType}}
+     var t {{.Type}}
 
      key, err := s.Key(params)
      if err != nil {

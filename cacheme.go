@@ -9,6 +9,7 @@ import (
 	"go/format"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -82,15 +83,16 @@ func NewPipeline(client RedisClient) *CachePipeline {
 type StoreSchema struct {
 	Name         string
 	Key          string
-	To           string
+	To           interface{}
 	Version      int
 	Vars         []string
 	TTL          time.Duration
 	Singleflight bool
 }
 
-func (s *StoreSchema) ToType() string {
-	return s.To
+type storeInfo struct {
+	StoreSchema
+	Type string
 }
 
 func (s *StoreSchema) SetVars(a []string) {
@@ -106,14 +108,32 @@ func firstLower(s string) string {
 }
 
 type templateVar struct {
-	Stores  []*StoreSchema
+	Stores  []storeInfo
 	Imports []string
 	Prefix  string
 }
 
-func SchemaToStore(prefix string, stores []*StoreSchema, imports []string, save bool) error {
+func pkgPath(t reflect.Type) string {
+	pkg := t.PkgPath()
+	if pkg != "" {
+		return pkg
+	}
+	switch t.Kind() {
+	case reflect.Slice, reflect.Array, reflect.Ptr:
+		return pkgPath(t.Elem())
+
+	case reflect.Map:
+		return pkgPath(t.Key()) + "|" + pkgPath(t.Elem())
+	}
+	return pkg
+}
+
+func SchemaToStore(prefix string, stores []*StoreSchema, save bool) error {
 	patternMapping := make(map[string]bool)
 	nameMapping := make(map[string]bool)
+	var info []storeInfo
+	importMap := make(map[string]string)
+
 	for _, s := range stores {
 		vars := []string{}
 		kt := s.Key
@@ -136,6 +156,24 @@ func SchemaToStore(prefix string, stores []*StoreSchema, imports []string, save 
 			vars = append(vars, v[1])
 		}
 		s.SetVars(vars)
+
+		t := reflect.TypeOf(s.To)
+		path := pkgPath(t)
+		info = append(info, storeInfo{
+			StoreSchema: *s,
+			Type:        t.String(),
+		})
+		all := strings.Split(path, "|")
+		for _, p := range all {
+			if p != "" {
+				importMap[p] = ""
+			}
+		}
+	}
+
+	var imports []string
+	for k := range importMap {
+		imports = append(imports, k)
 	}
 
 	funcMap := template.FuncMap{
@@ -150,9 +188,9 @@ func SchemaToStore(prefix string, stores []*StoreSchema, imports []string, save 
 	b := &bytes.Buffer{}
 
 	err = tmpl.Execute(b, templateVar{
-		Stores:  stores,
-		Imports: imports,
+		Stores:  info,
 		Prefix:  prefix,
+		Imports: imports,
 	})
 
 	if err != nil {

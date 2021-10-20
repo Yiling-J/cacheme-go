@@ -45,15 +45,12 @@ var (
 	// default prefix for redis keys
 	Prefix = "cacheme"
 
-	// extra imports in generated file
-	Imports = []string{}
-
 	// store schemas
 	Stores = []*cacheme.StoreSchema{
 		{
 			Name:    "Simple",
 			Key:     "simple:{{.ID}}",
-			To:      "string",
+			To:      "",
 			Version: 1,
 			TTL:     5 * time.Minute,
 		},
@@ -213,11 +210,12 @@ client.SimpleCacheStore.InvalidAll(ctx, 1)
 Each schema has 5 fields:
 - **Name** - store name, will be struct name in generated code, capital first.
 - **Key** - key with variable using **go template syntax**, Variable name will be used in code generation.
-- **To** - cached value type string, will be used in code generation. Examples:
-	- string: `"string"`
-	- struct: `"model.Foo"`
-	- struct pointer: `"*model.Foo"`
-	- slice: `"[]model.Foo"`
+- **To** - cached value, will be used in code generation. Examples:
+	- string: `""`
+	- struct: `model.Foo`
+	- struct pointer: `*model.Foo`
+	- slice: `[]model.Foo`
+	- map: `map[model.Foo]model.Bar`
 - **Version** - version number, for schema change.
 - **TTL** - redis ttl using go time.
 - **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same machine** will call Redis only once 
@@ -233,13 +231,3 @@ Each schema has 5 fields:
 	cacheme:category:1:book:3:v1
 	```
 	Also you will see `categoryID` and `bookID` in generated code, as fetch func params.
-
-- In `schema.go`, there is an `imports` part:
-	```go
-	Imports = []string{}
-	```
-	If you use structs in `To`, don't forget to add struct path here, so code generation can work:
-	```go
-	// we have model.Foo struct in schema
-	Imports = []string{"your_project/model"}
-	```

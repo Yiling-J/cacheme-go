@@ -24,9 +24,6 @@ var (
         // default prefix for redis keys
 	Prefix  = "cacheme"
 
-        // extra imports in generated file
-	Imports = []string{}
-
         // store templates
 	Stores = []*cacheme.StoreSchema{}
 )
@@ -41,7 +38,7 @@ import schema "{{.}}/cacheme/schema"
 
 
 func main() {
-    err := cm.SchemaToStore(schema.Prefix, schema.Stores, schema.Imports, true)
+    err := cm.SchemaToStore(schema.Prefix, schema.Stores, true)
     if err != nil {
         os.Exit(1)
     }

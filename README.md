@@ -210,12 +210,13 @@ client.SimpleCacheStore.InvalidAll(ctx, 1)
 Each schema has 5 fields:
 - **Name** - store name, will be struct name in generated code, capital first.
 - **Key** - key with variable using **go template syntax**, Variable name will be used in code generation.
-- **To** - cached value, will be used in code generation. Examples:
+- **To** - cached value, type of value will be used in code generation. Examples:
 	- string: `""`
-	- struct: `model.Foo`
-	- struct pointer: `*model.Foo`
-	- slice: `[]model.Foo`
-	- map: `map[model.Foo]model.Bar`
+	- int: `1`
+	- struct: `model.Foo{}`
+	- struct pointer: `&model.Foo{}`
+	- slice: `[]model.Foo{}`
+	- map: `map[model.Foo]model.Bar{}`
 - **Version** - version number, for schema change.
 - **TTL** - redis ttl using go time.
 - **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same machine** will call Redis only once 

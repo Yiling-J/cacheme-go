@@ -224,8 +224,10 @@ Each schema has 5 fields:
 #### Notes:
 - Duplicate name/key is not allowed.
 
-- If set `Singleflight` to `true`, Redis `GET` command will be wrapped in a [**singleflight**](https://pkg.go.dev/golang.org/x/sync/singleflight), so **concurrent requests to same key** will call Redis only once. This option only works for `store.Get` method, not `store.GetP`. Make it optional because in some situations, for example aws Lambda, `singleflight` is useless. Notice this is on Redis side, the pub/sub thundering herd protection is on database side.
-
+- If set `Singleflight` to `true`, Redis `GET` command will be wrapped in a [**singleflight**](https://pkg.go.dev/golang.org/x/sync/singleflight), so **concurrent requests to same key** will call `Redis` only once. Let's use some example to explain this:
+	- you have some products to sell, and thousands people will view the detail at same time, so the product key `product:1:info` may hit 100000 times per second. Now you should turn on **singleflight**, and the actually redis hit may reduce to 10000.
+	- you have cache for shopping cart `user:123:cart`, only the user himself can see that. Now no need to use **singleflight**, becauese there should't be concurrent requests to that key.
+	- you are using serveless platform, AWS Lambda or similar. So each request runs in isolated environment, can't talk to each other through channels. Then **singleflight** make no sense.
 - Full redis key has 3 parts: **prefix** + **schema key** + **version**.
 	Schema Key`category:{{.categoryID}}:book:{{.bookID}}` with prefix `cacheme`, version 1 will generate key:
 	```

@@ -21,7 +21,6 @@ const (
 	Hit  = "HIT"
 	Miss = "MISS"
 	Fetch     = "FETCH"
-	Fetched = "FETCHED"
 )
 
 type Client struct {
@@ -102,7 +101,7 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-	        p.store.client.logger.Log(key, Hit)
+	        p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -113,10 +112,10 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 		p.ctx,
 		{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
@@ -124,7 +123,6 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -248,13 +246,18 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
 
      memo := s.memo
      var res []byte
+     var hitRedis bool
      if {{.Singleflight}} {
-     	res, err = memo.GetCachedSingle(ctx, key)
+     	res, hitRedis, err = memo.GetCachedSingle(ctx, key)
      } else {
+       hitRedis = true
        res, err = memo.GetCached(ctx, key)
      }
      if err == nil {
-     	s.client.logger.Log(key, Hit)
+     	if hitRedis {
+		s.client.logger.Log(s.tag, key, Hit)
+	}
+     	s.client.logger.Log(s.tag, key, Hit)
 	err = cacheme.Unmarshal(res, &t)
 	return t, err
      }
@@ -262,7 +265,7 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      if err != redis.Nil {
 	return t, errors.New("")
      }
-     s.client.logger.Log(key, Miss)
+     s.client.logger.Log(s.tag, key, Miss)
 
      resourceLock, err := memo.Lock(ctx, key)
      if err != nil {
@@ -270,12 +273,11 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      }
 
      if resourceLock {
-     	s.client.logger.Log(key, Fetch)
+     	s.client.logger.Log(s.tag, key, Fetch)
 	value, err := s.Fetch(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 	if err != nil {
 	   return value, err
 	}
-	s.client.logger.Log(key, Fetched)
 	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		memo.SetCache(ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})

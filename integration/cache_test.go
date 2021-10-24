@@ -25,9 +25,9 @@ func (c *CounterLogger) Init() {
 	c.counter = make(map[string]int)
 }
 
-func (c *CounterLogger) Log(key string, op string) {
+func (c *CounterLogger) Log(store string, key string, op string) {
 	c.mu.Lock()
-	c.counter[key+"->"+op]++
+	c.counter[store+">"+key+">"+op]++
 	c.mu.Unlock()
 }
 
@@ -489,4 +489,32 @@ func TestCacheKey(t *testing.T) {
 	}
 	require.ElementsMatch(t, keys, expected)
 
+}
+
+func TestSingleFlightCocurrency(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	ctx := context.TODO()
+	logger := &CounterLogger{}
+	logger.Init()
+	client.SetLogger(logger)
+
+	_, err := client.SimpleFlightCacheStore.Get(ctx, "foo")
+	require.Nil(t, err)
+
+	var wg sync.WaitGroup
+	for i := 1; i <= 200; i++ {
+		wg.Add(1)
+		go func(c int) {
+			defer wg.Done()
+			r, err := client.SimpleFlightCacheStore.Get(ctx, "foo")
+			require.Nil(t, err)
+			require.Equal(t, "foo"+fetcher.Tester, r)
+		}(i)
+	}
+	wg.Wait()
+	hit, ok := logger.counter["SimpleFlight>simple:flight:foo:v1>HIT"]
+	require.True(t, ok)
+	require.True(t, hit < 30)
 }

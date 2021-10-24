@@ -17,10 +17,9 @@ import (
 )
 
 const (
-	Hit     = "HIT"
-	Miss    = "MISS"
-	Fetch   = "FETCH"
-	Fetched = "FETCHED"
+	Hit   = "HIT"
+	Miss  = "MISS"
+	Fetch = "FETCH"
 )
 
 type Client struct {
@@ -163,7 +162,7 @@ func (p *SimplePromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		p.store.client.logger.Log(key, Hit)
+		p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -174,10 +173,10 @@ func (p *SimplePromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 			p.ctx,
 			ID)
@@ -185,7 +184,6 @@ func (p *SimplePromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -305,13 +303,18 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 
 	memo := s.memo
 	var res []byte
+	var hitRedis bool
 	if false {
-		res, err = memo.GetCachedSingle(ctx, key)
+		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
 	} else {
+		hitRedis = true
 		res, err = memo.GetCached(ctx, key)
 	}
 	if err == nil {
-		s.client.logger.Log(key, Hit)
+		if hitRedis {
+			s.client.logger.Log(s.tag, key, Hit)
+		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -319,7 +322,7 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 	if err != redis.Nil {
 		return t, errors.New("")
 	}
-	s.client.logger.Log(key, Miss)
+	s.client.logger.Log(s.tag, key, Miss)
 
 	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
@@ -327,12 +330,11 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 	}
 
 	if resourceLock {
-		s.client.logger.Log(key, Fetch)
+		s.client.logger.Log(s.tag, key, Fetch)
 		value, err := s.Fetch(ctx, ID)
 		if err != nil {
 			return value, err
 		}
-		s.client.logger.Log(key, Fetched)
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
@@ -419,7 +421,7 @@ func (p *FooMapPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		p.store.client.logger.Log(key, Hit)
+		p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -430,10 +432,10 @@ func (p *FooMapPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 			p.ctx,
 			ID)
@@ -441,7 +443,6 @@ func (p *FooMapPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -561,13 +562,18 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 
 	memo := s.memo
 	var res []byte
+	var hitRedis bool
 	if false {
-		res, err = memo.GetCachedSingle(ctx, key)
+		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
 	} else {
+		hitRedis = true
 		res, err = memo.GetCached(ctx, key)
 	}
 	if err == nil {
-		s.client.logger.Log(key, Hit)
+		if hitRedis {
+			s.client.logger.Log(s.tag, key, Hit)
+		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -575,7 +581,7 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 	if err != redis.Nil {
 		return t, errors.New("")
 	}
-	s.client.logger.Log(key, Miss)
+	s.client.logger.Log(s.tag, key, Miss)
 
 	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
@@ -583,12 +589,11 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 	}
 
 	if resourceLock {
-		s.client.logger.Log(key, Fetch)
+		s.client.logger.Log(s.tag, key, Fetch)
 		value, err := s.Fetch(ctx, ID)
 		if err != nil {
 			return value, err
 		}
-		s.client.logger.Log(key, Fetched)
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
@@ -675,7 +680,7 @@ func (p *FooPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID strin
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		p.store.client.logger.Log(key, Hit)
+		p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -686,10 +691,10 @@ func (p *FooPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID strin
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 			p.ctx,
 			ID)
@@ -697,7 +702,6 @@ func (p *FooPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID strin
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -817,13 +821,18 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 
 	memo := s.memo
 	var res []byte
+	var hitRedis bool
 	if false {
-		res, err = memo.GetCachedSingle(ctx, key)
+		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
 	} else {
+		hitRedis = true
 		res, err = memo.GetCached(ctx, key)
 	}
 	if err == nil {
-		s.client.logger.Log(key, Hit)
+		if hitRedis {
+			s.client.logger.Log(s.tag, key, Hit)
+		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -831,7 +840,7 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 	if err != redis.Nil {
 		return t, errors.New("")
 	}
-	s.client.logger.Log(key, Miss)
+	s.client.logger.Log(s.tag, key, Miss)
 
 	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
@@ -839,12 +848,11 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 	}
 
 	if resourceLock {
-		s.client.logger.Log(key, Fetch)
+		s.client.logger.Log(s.tag, key, Fetch)
 		value, err := s.Fetch(ctx, ID)
 		if err != nil {
 			return value, err
 		}
-		s.client.logger.Log(key, Fetched)
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
@@ -931,7 +939,7 @@ func (p *FooPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID stri
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		p.store.client.logger.Log(key, Hit)
+		p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -942,10 +950,10 @@ func (p *FooPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID stri
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 			p.ctx,
 			ID)
@@ -953,7 +961,6 @@ func (p *FooPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID stri
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -1073,13 +1080,18 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 
 	memo := s.memo
 	var res []byte
+	var hitRedis bool
 	if false {
-		res, err = memo.GetCachedSingle(ctx, key)
+		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
 	} else {
+		hitRedis = true
 		res, err = memo.GetCached(ctx, key)
 	}
 	if err == nil {
-		s.client.logger.Log(key, Hit)
+		if hitRedis {
+			s.client.logger.Log(s.tag, key, Hit)
+		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1087,7 +1099,7 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 	if err != redis.Nil {
 		return t, errors.New("")
 	}
-	s.client.logger.Log(key, Miss)
+	s.client.logger.Log(s.tag, key, Miss)
 
 	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
@@ -1095,12 +1107,11 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 	}
 
 	if resourceLock {
-		s.client.logger.Log(key, Fetch)
+		s.client.logger.Log(s.tag, key, Fetch)
 		value, err := s.Fetch(ctx, ID)
 		if err != nil {
 			return value, err
 		}
-		s.client.logger.Log(key, Fetched)
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
@@ -1187,7 +1198,7 @@ func (p *FooListPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		p.store.client.logger.Log(key, Hit)
+		p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -1198,10 +1209,10 @@ func (p *FooListPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 			p.ctx,
 			ID)
@@ -1209,7 +1220,6 @@ func (p *FooListPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -1329,13 +1339,18 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 
 	memo := s.memo
 	var res []byte
+	var hitRedis bool
 	if false {
-		res, err = memo.GetCachedSingle(ctx, key)
+		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
 	} else {
+		hitRedis = true
 		res, err = memo.GetCached(ctx, key)
 	}
 	if err == nil {
-		s.client.logger.Log(key, Hit)
+		if hitRedis {
+			s.client.logger.Log(s.tag, key, Hit)
+		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1343,7 +1358,7 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 	if err != redis.Nil {
 		return t, errors.New("")
 	}
-	s.client.logger.Log(key, Miss)
+	s.client.logger.Log(s.tag, key, Miss)
 
 	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
@@ -1351,12 +1366,11 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 	}
 
 	if resourceLock {
-		s.client.logger.Log(key, Fetch)
+		s.client.logger.Log(s.tag, key, Fetch)
 		value, err := s.Fetch(ctx, ID)
 		if err != nil {
 			return value, err
 		}
-		s.client.logger.Log(key, Fetched)
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
@@ -1443,7 +1457,7 @@ func (p *FooListPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID 
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		p.store.client.logger.Log(key, Hit)
+		p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -1454,10 +1468,10 @@ func (p *FooListPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID 
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 			p.ctx,
 			ID)
@@ -1465,7 +1479,6 @@ func (p *FooListPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID 
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -1585,13 +1598,18 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 
 	memo := s.memo
 	var res []byte
+	var hitRedis bool
 	if false {
-		res, err = memo.GetCachedSingle(ctx, key)
+		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
 	} else {
+		hitRedis = true
 		res, err = memo.GetCached(ctx, key)
 	}
 	if err == nil {
-		s.client.logger.Log(key, Hit)
+		if hitRedis {
+			s.client.logger.Log(s.tag, key, Hit)
+		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1599,7 +1617,7 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 	if err != redis.Nil {
 		return t, errors.New("")
 	}
-	s.client.logger.Log(key, Miss)
+	s.client.logger.Log(s.tag, key, Miss)
 
 	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
@@ -1607,12 +1625,11 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 	}
 
 	if resourceLock {
-		s.client.logger.Log(key, Fetch)
+		s.client.logger.Log(s.tag, key, Fetch)
 		value, err := s.Fetch(ctx, ID)
 		if err != nil {
 			return value, err
 		}
-		s.client.logger.Log(key, Fetched)
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
@@ -1699,7 +1716,7 @@ func (p *FooMapSPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		p.store.client.logger.Log(key, Hit)
+		p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -1710,10 +1727,10 @@ func (p *FooMapSPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 			p.ctx,
 			ID)
@@ -1721,7 +1738,6 @@ func (p *FooMapSPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -1841,13 +1857,18 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 
 	memo := s.memo
 	var res []byte
+	var hitRedis bool
 	if false {
-		res, err = memo.GetCachedSingle(ctx, key)
+		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
 	} else {
+		hitRedis = true
 		res, err = memo.GetCached(ctx, key)
 	}
 	if err == nil {
-		s.client.logger.Log(key, Hit)
+		if hitRedis {
+			s.client.logger.Log(s.tag, key, Hit)
+		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1855,7 +1876,7 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 	if err != redis.Nil {
 		return t, errors.New("")
 	}
-	s.client.logger.Log(key, Miss)
+	s.client.logger.Log(s.tag, key, Miss)
 
 	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
@@ -1863,12 +1884,11 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 	}
 
 	if resourceLock {
-		s.client.logger.Log(key, Fetch)
+		s.client.logger.Log(s.tag, key, Fetch)
 		value, err := s.Fetch(ctx, ID)
 		if err != nil {
 			return value, err
 		}
-		s.client.logger.Log(key, Fetched)
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
@@ -1955,7 +1975,7 @@ func (p *SimpleFlightPromise) WaitExecute(cp *cacheme.CachePipeline, key string,
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
-		p.store.client.logger.Log(key, Hit)
+		p.store.client.logger.Log(p.store.tag, key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -1966,10 +1986,10 @@ func (p *SimpleFlightPromise) WaitExecute(cp *cacheme.CachePipeline, key string,
 		p.error = err
 		return
 	}
-	p.store.client.logger.Log(key, Miss)
+	p.store.client.logger.Log(p.store.tag, key, Miss)
 
 	if resourceLock {
-		p.store.client.logger.Log(key, Fetch)
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 			p.ctx,
 			ID)
@@ -1977,7 +1997,6 @@ func (p *SimpleFlightPromise) WaitExecute(cp *cacheme.CachePipeline, key string,
 			p.error = err
 			return
 		}
-		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -2097,13 +2116,17 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 
 	memo := s.memo
 	var res []byte
+	var hitRedis bool
 	if true {
-		res, err = memo.GetCachedSingle(ctx, key)
+		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
 	} else {
+		hitRedis = true
 		res, err = memo.GetCached(ctx, key)
 	}
 	if err == nil {
-		s.client.logger.Log(key, Hit)
+		if hitRedis {
+			s.client.logger.Log(s.tag, key, Hit)
+		}
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -2111,7 +2134,7 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 	if err != redis.Nil {
 		return t, errors.New("")
 	}
-	s.client.logger.Log(key, Miss)
+	s.client.logger.Log(s.tag, key, Miss)
 
 	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
@@ -2119,12 +2142,11 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 	}
 
 	if resourceLock {
-		s.client.logger.Log(key, Fetch)
+		s.client.logger.Log(s.tag, key, Fetch)
 		value, err := s.Fetch(ctx, ID)
 		if err != nil {
 			return value, err
 		}
-		s.client.logger.Log(key, Fetched)
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
 			memo.SetCache(ctx, key, packed, time.Millisecond*300000)

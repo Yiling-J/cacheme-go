@@ -16,6 +16,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type CounterLogger struct {
+	counter map[string]int
+	mu      sync.Mutex
+}
+
+func (c *CounterLogger) Init() {
+	c.counter = make(map[string]int)
+}
+
+func (c *CounterLogger) Log(key string, op string) {
+	c.mu.Lock()
+	c.counter[key+"->"+op]++
+	c.mu.Unlock()
+}
+
 func Cacheme() *cacheme.Client {
 	return cacheme.New(redis.NewClient(
 		&redis.Options{
@@ -375,12 +390,18 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 func TestSingle(t *testing.T) {
 	fetcher.Setup()
 	client := Cacheme()
+	logger := &CounterLogger{}
+	logger.Init()
+	client.SetLogger(logger)
 	CacheTypeTest(t, client, CleanRedis)
 }
 
 func TestCluster(t *testing.T) {
 	fetcher.Setup()
 	client := CachemeCluster()
+	logger := &CounterLogger{}
+	logger.Init()
+	client.SetLogger(logger)
 	CacheTypeTest(t, client, CleanRedisCluster)
 }
 
@@ -434,13 +455,21 @@ func CacheConcurrencyTestCase(t *testing.T, client *cacheme.Client, cleanFunc fu
 func TestSingleConcurrency(t *testing.T) {
 	fetcher.Setup()
 	client := Cacheme()
+	logger := &CounterLogger{}
+	logger.Init()
+	client.SetLogger(logger)
 	CacheConcurrencyTestCase(t, client, CleanRedis)
+	fmt.Println(logger.counter)
 }
 
 func TestClusterConcurrency(t *testing.T) {
 	fetcher.Setup()
 	client := CachemeCluster()
+	logger := &CounterLogger{}
+	logger.Init()
+	client.SetLogger(logger)
 	CacheConcurrencyTestCase(t, client, CleanRedisCluster)
+	fmt.Println(logger.counter)
 }
 
 func TestCacheKey(t *testing.T) {

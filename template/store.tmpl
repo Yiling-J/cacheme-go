@@ -17,6 +17,13 @@ import (
 	{{end}}
 )
 
+const (
+	Hit  = "HIT"
+	Miss = "MISS"
+	Fetch     = "FETCH"
+	Fetched = "FETCHED"
+)
+
 type Client struct {
      	{{range .Stores}}
 	{{ $NodeName := .Name | FirstLower  }}
@@ -24,10 +31,15 @@ type Client struct {
 	{{end}}
 	redis cacheme.RedisClient
 	cluster bool
+	logger  cacheme.Logger
 }
 
 func (c *Client) Redis() cacheme.RedisClient {
 	return c.redis
+}
+
+func (c *Client) SetLogger(l cacheme.Logger) {
+	c.logger = l
 }
 
 func New(redis cacheme.RedisClient) *Client {
@@ -36,6 +48,7 @@ func New(redis cacheme.RedisClient) *Client {
      client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone(client.redis)
      client.{{.Name}}CacheStore.SetClient(client)
      {{end}}
+     client.logger = &cacheme.NOPLogger{}
      return client
 }
 
@@ -45,6 +58,7 @@ func NewCluster(redis cacheme.RedisClient) *Client {
      client.{{.Name}}CacheStore = {{.Name}}CacheStore.Clone(client.redis)
      client.{{.Name}}CacheStore.SetClient(client)
      {{end}}
+     client.logger = &cacheme.NOPLogger{}
      return client
 }
 
@@ -88,6 +102,7 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 	<-cp.Executed
 	value, err := p.redisPromise.Bytes()
 	if err == nil {
+	        p.store.client.logger.Log(key, Hit)
 		err = cacheme.Unmarshal(value, &t)
 		p.result, p.error = t, err
 		return
@@ -98,8 +113,10 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 		p.error = err
 		return
 	}
+	p.store.client.logger.Log(key, Miss)
 
 	if resourceLock {
+		p.store.client.logger.Log(key, Fetch)
 		value, err := p.store.Fetch(
 		p.ctx,
 		{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
@@ -107,6 +124,7 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 			p.error = err
 			return
 		}
+		p.store.client.logger.Log(key, Fetched)
 		p.result = value
 		packed, err := cacheme.Marshal(value)
 		if err == nil {
@@ -236,6 +254,7 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
        res, err = memo.GetCached(ctx, key)
      }
      if err == nil {
+     	s.client.logger.Log(key, Hit)
 	err = cacheme.Unmarshal(res, &t)
 	return t, err
      }
@@ -243,6 +262,7 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      if err != redis.Nil {
 	return t, errors.New("")
      }
+     s.client.logger.Log(key, Miss)
 
      resourceLock, err := memo.Lock(ctx, key)
      if err != nil {
@@ -250,10 +270,12 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      }
 
      if resourceLock {
+     	s.client.logger.Log(key, Fetch)
 	value, err := s.Fetch(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 	if err != nil {
 	   return value, err
 	}
+	s.client.logger.Log(key, Fetched)
 	packed, err := cacheme.Marshal(value)
 	if err == nil {
 		memo.SetCache(ctx, key, packed, time.Millisecond * {{.TTL.Milliseconds}})

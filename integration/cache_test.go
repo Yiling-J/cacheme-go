@@ -516,5 +516,6 @@ func TestSingleFlightCocurrency(t *testing.T) {
 	wg.Wait()
 	hit, ok := logger.counter["SimpleFlight>simple:flight:foo:v1>HIT"]
 	require.True(t, ok)
-	require.True(t, hit < 30)
+	fmt.Println(hit)
+	require.True(t, hit < 50)
 }

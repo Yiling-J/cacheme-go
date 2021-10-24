@@ -37,22 +37,21 @@ package schema
 
 import (
 	"time"
-
 	cacheme "github.com/Yiling-J/cacheme-go"
 )
 
 var (
 	// default prefix for redis keys
 	Prefix = "cacheme"
-
 	// store schemas
 	Stores = []*cacheme.StoreSchema{
 		{
-			Name:    "Simple",
-			Key:     "simple:{{.ID}}",
-			To:      "",
-			Version: 1,
-			TTL:     5 * time.Minute,
+			Name:         "Simple",
+			Key:          "simple:{{.ID}}",
+			To:           "",
+			Version:      1,
+			TTL:          5 * time.Minute,
+			Singleflight: false,
 		},
 	}
 )
@@ -234,3 +233,23 @@ Each schema has 5 fields:
 	cacheme:category:1:book:3:v1
 	```
 	Also you will see `categoryID` and `bookID` in generated code, as fetch func params.
+
+## Logger
+You can use custom logger with cacheme, your logger should implement cacheme logger interface:
+```go
+type Logger interface {
+	Log(store string, key string, op string)
+}
+```
+Here `store` is the store tag, `key` is cache key without prefix, `op` is operation type.
+Default logger is `NOPLogger`, just return and do nothing.
+
+#### Set client logger:
+```go
+logger := &YourCustomLogger{}
+client.SetLogger(logger)
+```
+#### Operation Types:
+ - **HIT**: cache hit to redis, if you enable singleflight, grouped requests only log once.
+ - **MISS**: cache miss 
+ - **FETCH**: fetch data from fetcher

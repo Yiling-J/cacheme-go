@@ -194,7 +194,12 @@ func (p *SimplePromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -314,7 +319,6 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 		if hitRedis {
 			s.client.logger.Log(s.tag, key, Hit)
 		}
-		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -343,7 +347,11 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 		return value, err
 	}
 
-	res, err = memo.Wait(ctx, key)
+	if false {
+		res, err = memo.WaitSingle(ctx, key)
+	} else {
+		res, err = memo.Wait(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -453,7 +461,12 @@ func (p *FooMapPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -573,7 +586,6 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 		if hitRedis {
 			s.client.logger.Log(s.tag, key, Hit)
 		}
-		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -602,7 +614,11 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 		return value, err
 	}
 
-	res, err = memo.Wait(ctx, key)
+	if false {
+		res, err = memo.WaitSingle(ctx, key)
+	} else {
+		res, err = memo.Wait(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -712,7 +728,12 @@ func (p *FooPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID strin
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -832,7 +853,6 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 		if hitRedis {
 			s.client.logger.Log(s.tag, key, Hit)
 		}
-		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -861,7 +881,11 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 		return value, err
 	}
 
-	res, err = memo.Wait(ctx, key)
+	if false {
+		res, err = memo.WaitSingle(ctx, key)
+	} else {
+		res, err = memo.Wait(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -971,7 +995,12 @@ func (p *FooPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID stri
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -1091,7 +1120,6 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 		if hitRedis {
 			s.client.logger.Log(s.tag, key, Hit)
 		}
-		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1120,7 +1148,11 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 		return value, err
 	}
 
-	res, err = memo.Wait(ctx, key)
+	if false {
+		res, err = memo.WaitSingle(ctx, key)
+	} else {
+		res, err = memo.Wait(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1230,7 +1262,12 @@ func (p *FooListPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -1350,7 +1387,6 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 		if hitRedis {
 			s.client.logger.Log(s.tag, key, Hit)
 		}
-		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1379,7 +1415,11 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 		return value, err
 	}
 
-	res, err = memo.Wait(ctx, key)
+	if false {
+		res, err = memo.WaitSingle(ctx, key)
+	} else {
+		res, err = memo.Wait(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1489,7 +1529,12 @@ func (p *FooListPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID 
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -1609,7 +1654,6 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 		if hitRedis {
 			s.client.logger.Log(s.tag, key, Hit)
 		}
-		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1638,7 +1682,11 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 		return value, err
 	}
 
-	res, err = memo.Wait(ctx, key)
+	if false {
+		res, err = memo.WaitSingle(ctx, key)
+	} else {
+		res, err = memo.Wait(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1748,7 +1796,12 @@ func (p *FooMapSPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID s
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if false {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -1868,7 +1921,6 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 		if hitRedis {
 			s.client.logger.Log(s.tag, key, Hit)
 		}
-		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1897,7 +1949,11 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 		return value, err
 	}
 
-	res, err = memo.Wait(ctx, key)
+	if false {
+		res, err = memo.WaitSingle(ctx, key)
+	} else {
+		res, err = memo.Wait(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -2007,7 +2063,12 @@ func (p *SimpleFlightPromise) WaitExecute(cp *cacheme.CachePipeline, key string,
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if true {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -2155,7 +2216,11 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 		return value, err
 	}
 
-	res, err = memo.Wait(ctx, key)
+	if true {
+		res, err = memo.WaitSingle(ctx, key)
+	} else {
+		res, err = memo.Wait(ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err

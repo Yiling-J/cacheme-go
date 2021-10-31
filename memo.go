@@ -226,3 +226,14 @@ func (r *RedisMemoLock) Wait(ctx context.Context, key string) ([]byte, error) {
 		return res, nil
 	}
 }
+
+func (r *RedisMemoLock) WaitSingle(ctx context.Context, key string) ([]byte, error) {
+	resourceID := r.prefix + ":wait:" + key
+
+	resp, err, _ := r.group.Do(resourceID, func() (interface{}, error) {
+		return r.Wait(ctx, key)
+	})
+
+	data := resp.([]byte)
+	return data, err
+}

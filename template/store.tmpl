@@ -133,7 +133,12 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 		return
 	}
 
-	res, err := memo.Wait(p.ctx, key)
+	var res []byte
+	if {{.Singleflight}} {
+	   res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+	  res, err = memo.Wait(p.ctx, key)
+	}
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 	}
@@ -257,7 +262,6 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      	if hitRedis {
 		s.client.logger.Log(s.tag, key, Hit)
 	}
-     	s.client.logger.Log(s.tag, key, Hit)
 	err = cacheme.Unmarshal(res, &t)
 	return t, err
      }
@@ -286,7 +290,11 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
 	return value, err
      }
 
-     res, err = memo.Wait(ctx, key)
+     if {{.Singleflight}} {
+     	res, err = memo.WaitSingle(ctx, key)
+     } else {
+       res, err = memo.Wait(ctx, key)
+     }
      if err == nil {
 	err = cacheme.Unmarshal(res, &t)
 	return t, err

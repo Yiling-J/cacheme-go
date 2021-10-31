@@ -253,3 +253,16 @@ client.SetLogger(logger)
  - **HIT**: cache hit to redis, if you enable singleflight, grouped requests only log once.
  - **MISS**: cache miss 
  - **FETCH**: fetch data from fetcher
+
+## Performance
+Parallel benchmarks of Cacheme alongside [go-redis/cache](https://github.com/go-redis/cache):
+ - params: 10000/1000000 hits, 10 keys loop, TTL 10s, `SetParallelism(100)`, singleflight on
+ - go-redis/cache without local cache
+```
+cpu: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
+BenchmarkCachemeGetParallel-12    	   10000	    198082 ns/op
+BenchmarkCacheGetParallel-12    	   10000	    189766 ns/op
+BenchmarkCachemeGetParallel-12    	 1000000	     13224 ns/op
+BenchmarkCacheGetParallel-12    	 1000000	      4323 ns/op
+```
+At 10000 hits, result almost same. At 1000000 hits, go-redis/cache is about 3 times faster than Cacheme. but keep in mind, go-redis/cache is based on singleflight **only**, not truly distributed. This bench case is single executable, not the real load case.

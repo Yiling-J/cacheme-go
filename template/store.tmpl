@@ -271,10 +271,13 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      }
      s.client.logger.Log(s.tag, key, Miss)
 
-     resourceLock, err := memo.Lock(ctx, key)
-     if err != nil {
-	return t, err
-     }
+     var resourceLock bool
+     if hitRedis {
+	resourceLock, err = memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
+	}
+	}
 
      if resourceLock {
      	s.client.logger.Log(s.tag, key, Fetch)

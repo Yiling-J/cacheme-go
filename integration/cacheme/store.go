@@ -328,9 +328,12 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	resourceLock, err := memo.Lock(ctx, key)
-	if err != nil {
-		return t, err
+	var resourceLock bool
+	if hitRedis {
+		resourceLock, err = memo.Lock(ctx, key)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	if resourceLock {
@@ -595,9 +598,12 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	resourceLock, err := memo.Lock(ctx, key)
-	if err != nil {
-		return t, err
+	var resourceLock bool
+	if hitRedis {
+		resourceLock, err = memo.Lock(ctx, key)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	if resourceLock {
@@ -862,9 +868,12 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	resourceLock, err := memo.Lock(ctx, key)
-	if err != nil {
-		return t, err
+	var resourceLock bool
+	if hitRedis {
+		resourceLock, err = memo.Lock(ctx, key)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	if resourceLock {
@@ -1129,9 +1138,12 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	resourceLock, err := memo.Lock(ctx, key)
-	if err != nil {
-		return t, err
+	var resourceLock bool
+	if hitRedis {
+		resourceLock, err = memo.Lock(ctx, key)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	if resourceLock {
@@ -1396,9 +1408,12 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	resourceLock, err := memo.Lock(ctx, key)
-	if err != nil {
-		return t, err
+	var resourceLock bool
+	if hitRedis {
+		resourceLock, err = memo.Lock(ctx, key)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	if resourceLock {
@@ -1663,9 +1678,12 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	resourceLock, err := memo.Lock(ctx, key)
-	if err != nil {
-		return t, err
+	var resourceLock bool
+	if hitRedis {
+		resourceLock, err = memo.Lock(ctx, key)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	if resourceLock {
@@ -1930,9 +1948,12 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	resourceLock, err := memo.Lock(ctx, key)
-	if err != nil {
-		return t, err
+	var resourceLock bool
+	if hitRedis {
+		resourceLock, err = memo.Lock(ctx, key)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	if resourceLock {
@@ -2197,9 +2218,12 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	resourceLock, err := memo.Lock(ctx, key)
-	if err != nil {
-		return t, err
+	var resourceLock bool
+	if hitRedis {
+		resourceLock, err = memo.Lock(ctx, key)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	if resourceLock {

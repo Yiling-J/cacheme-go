@@ -218,7 +218,7 @@ Each schema has 5 fields:
 	- map: `map[model.Foo]model.Bar{}`
 - **Version** - version number, for schema change.
 - **TTL** - redis ttl using go time.
-- **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same machine** will call Redis only once 
+- **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same executable** will call Redis only once 
 
 #### Notes:
 - Duplicate name/key is not allowed.

@@ -53,6 +53,10 @@ type RedisMemoLock struct {
 	group         singleflight.Group
 }
 
+func (r *RedisMemoLock) SingleGroup() *singleflight.Group {
+	return &r.group
+}
+
 func (r *RedisMemoLock) dispatch() {
 	for {
 		select {
@@ -140,20 +144,6 @@ func (r *RedisMemoLock) GetCached(ctx context.Context, key string) ([]byte, erro
 	resourceID := r.prefix + ":" + key
 
 	return r.client.Get(ctx, resourceID).Bytes()
-}
-
-// GetCachedSingle is singleflight version of GetCached
-func (r *RedisMemoLock) GetCachedSingle(ctx context.Context, key string) ([]byte, bool, error) {
-	resourceID := r.prefix + ":" + key
-
-	var hit bool
-	respBytes, err, _ := r.group.Do(resourceID, func() (interface{}, error) {
-		hit = true
-		return r.client.Get(ctx, resourceID).Bytes()
-	})
-
-	resp := respBytes.([]byte)
-	return resp, hit, err
 }
 
 func (r *RedisMemoLock) DeleteCache(ctx context.Context, key string) error {

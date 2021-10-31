@@ -237,6 +237,30 @@ func (s *{{$NodeName}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline
 }
 
 func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
+
+     params := make(map[string]string)
+     {{range .Vars}}
+     params["{{.}}"] = {{.}}
+     {{end}}
+
+     var t {{.Type}}
+
+     key, err := s.Key(params)
+     if err != nil {
+     	return t, err
+     }
+
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+		})
+		return data.({{.Type}}), err
+	}
+	return s.get(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+}
+
+func (s *{{$NodeName}}Cache) get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
      params := make(map[string]string)
      {{range .Vars}}
      params["{{.}}"] = {{.}}
@@ -251,17 +275,10 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
 
      memo := s.memo
      var res []byte
-     var hitRedis bool
-     if {{.Singleflight}} {
-     	res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-     } else {
-       hitRedis = true
-       res, err = memo.GetCached(ctx, key)
-     }
+     
+     res, err = memo.GetCached(ctx, key)
      if err == nil {
-     	if hitRedis {
-		s.client.logger.Log(s.tag, key, Hit)
-	}
+	s.client.logger.Log(s.tag, key, Hit)
 	err = cacheme.Unmarshal(res, &t)
 	return t, err
      }
@@ -271,12 +288,9 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      }
      s.client.logger.Log(s.tag, key, Miss)
 
-     var resourceLock bool
-     if hitRedis {
-	resourceLock, err = memo.Lock(ctx, key)
+	resourceLock, err := memo.Lock(ctx, key)
 	if err != nil {
 		return t, err
-	}
 	}
 
      if resourceLock {
@@ -293,11 +307,8 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
 	return value, err
      }
 
-     if {{.Singleflight}} {
-     	res, err = memo.WaitSingle(ctx, key)
-     } else {
-       res, err = memo.Wait(ctx, key)
-     }
+     res, err = memo.Wait(ctx, key)
+       
      if err == nil {
 	err = cacheme.Unmarshal(res, &t)
 	return t, err

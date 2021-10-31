@@ -295,6 +295,28 @@ func (s *simpleCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 }
 
 func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t string
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.(string), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *simpleCache) get(ctx context.Context, ID string) (string, error) {
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -308,17 +330,10 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 
 	memo := s.memo
 	var res []byte
-	var hitRedis bool
-	if false {
-		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-	} else {
-		hitRedis = true
-		res, err = memo.GetCached(ctx, key)
-	}
+
+	res, err = memo.GetCached(ctx, key)
 	if err == nil {
-		if hitRedis {
-			s.client.logger.Log(s.tag, key, Hit)
-		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -328,12 +343,9 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	var resourceLock bool
-	if hitRedis {
-		resourceLock, err = memo.Lock(ctx, key)
-		if err != nil {
-			return t, err
-		}
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
 	}
 
 	if resourceLock {
@@ -350,11 +362,8 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 		return value, err
 	}
 
-	if false {
-		res, err = memo.WaitSingle(ctx, key)
-	} else {
-		res, err = memo.Wait(ctx, key)
-	}
+	res, err = memo.Wait(ctx, key)
+
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -565,6 +574,28 @@ func (s *fooMapCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 }
 
 func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t map[string]string
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.(map[string]string), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *fooMapCache) get(ctx context.Context, ID string) (map[string]string, error) {
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -578,17 +609,10 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 
 	memo := s.memo
 	var res []byte
-	var hitRedis bool
-	if false {
-		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-	} else {
-		hitRedis = true
-		res, err = memo.GetCached(ctx, key)
-	}
+
+	res, err = memo.GetCached(ctx, key)
 	if err == nil {
-		if hitRedis {
-			s.client.logger.Log(s.tag, key, Hit)
-		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -598,12 +622,9 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	var resourceLock bool
-	if hitRedis {
-		resourceLock, err = memo.Lock(ctx, key)
-		if err != nil {
-			return t, err
-		}
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
 	}
 
 	if resourceLock {
@@ -620,11 +641,8 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 		return value, err
 	}
 
-	if false {
-		res, err = memo.WaitSingle(ctx, key)
-	} else {
-		res, err = memo.Wait(ctx, key)
-	}
+	res, err = memo.Wait(ctx, key)
+
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -835,6 +853,28 @@ func (s *fooCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID strin
 }
 
 func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t model.Foo
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.(model.Foo), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *fooCache) get(ctx context.Context, ID string) (model.Foo, error) {
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -848,17 +888,10 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 
 	memo := s.memo
 	var res []byte
-	var hitRedis bool
-	if false {
-		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-	} else {
-		hitRedis = true
-		res, err = memo.GetCached(ctx, key)
-	}
+
+	res, err = memo.GetCached(ctx, key)
 	if err == nil {
-		if hitRedis {
-			s.client.logger.Log(s.tag, key, Hit)
-		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -868,12 +901,9 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	var resourceLock bool
-	if hitRedis {
-		resourceLock, err = memo.Lock(ctx, key)
-		if err != nil {
-			return t, err
-		}
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
 	}
 
 	if resourceLock {
@@ -890,11 +920,8 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 		return value, err
 	}
 
-	if false {
-		res, err = memo.WaitSingle(ctx, key)
-	} else {
-		res, err = memo.Wait(ctx, key)
-	}
+	res, err = memo.Wait(ctx, key)
+
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1105,6 +1132,28 @@ func (s *fooPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID stri
 }
 
 func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t *model.Foo
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.(*model.Foo), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *fooPCache) get(ctx context.Context, ID string) (*model.Foo, error) {
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -1118,17 +1167,10 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 
 	memo := s.memo
 	var res []byte
-	var hitRedis bool
-	if false {
-		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-	} else {
-		hitRedis = true
-		res, err = memo.GetCached(ctx, key)
-	}
+
+	res, err = memo.GetCached(ctx, key)
 	if err == nil {
-		if hitRedis {
-			s.client.logger.Log(s.tag, key, Hit)
-		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1138,12 +1180,9 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	var resourceLock bool
-	if hitRedis {
-		resourceLock, err = memo.Lock(ctx, key)
-		if err != nil {
-			return t, err
-		}
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
 	}
 
 	if resourceLock {
@@ -1160,11 +1199,8 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 		return value, err
 	}
 
-	if false {
-		res, err = memo.WaitSingle(ctx, key)
-	} else {
-		res, err = memo.Wait(ctx, key)
-	}
+	res, err = memo.Wait(ctx, key)
+
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1375,6 +1411,28 @@ func (s *fooListCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID s
 }
 
 func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t []model.Foo
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.([]model.Foo), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *fooListCache) get(ctx context.Context, ID string) ([]model.Foo, error) {
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -1388,17 +1446,10 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 
 	memo := s.memo
 	var res []byte
-	var hitRedis bool
-	if false {
-		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-	} else {
-		hitRedis = true
-		res, err = memo.GetCached(ctx, key)
-	}
+
+	res, err = memo.GetCached(ctx, key)
 	if err == nil {
-		if hitRedis {
-			s.client.logger.Log(s.tag, key, Hit)
-		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1408,12 +1459,9 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	var resourceLock bool
-	if hitRedis {
-		resourceLock, err = memo.Lock(ctx, key)
-		if err != nil {
-			return t, err
-		}
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
 	}
 
 	if resourceLock {
@@ -1430,11 +1478,8 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 		return value, err
 	}
 
-	if false {
-		res, err = memo.WaitSingle(ctx, key)
-	} else {
-		res, err = memo.Wait(ctx, key)
-	}
+	res, err = memo.Wait(ctx, key)
+
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1645,6 +1690,28 @@ func (s *fooListPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID 
 }
 
 func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t []*model.Foo
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.([]*model.Foo), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *fooListPCache) get(ctx context.Context, ID string) ([]*model.Foo, error) {
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -1658,17 +1725,10 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 
 	memo := s.memo
 	var res []byte
-	var hitRedis bool
-	if false {
-		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-	} else {
-		hitRedis = true
-		res, err = memo.GetCached(ctx, key)
-	}
+
+	res, err = memo.GetCached(ctx, key)
 	if err == nil {
-		if hitRedis {
-			s.client.logger.Log(s.tag, key, Hit)
-		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1678,12 +1738,9 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	var resourceLock bool
-	if hitRedis {
-		resourceLock, err = memo.Lock(ctx, key)
-		if err != nil {
-			return t, err
-		}
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
 	}
 
 	if resourceLock {
@@ -1700,11 +1757,8 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 		return value, err
 	}
 
-	if false {
-		res, err = memo.WaitSingle(ctx, key)
-	} else {
-		res, err = memo.Wait(ctx, key)
-	}
+	res, err = memo.Wait(ctx, key)
+
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -1915,6 +1969,28 @@ func (s *fooMapSCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID s
 }
 
 func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.Bar, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t map[model.Foo]model.Bar
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.(map[model.Foo]model.Bar), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *fooMapSCache) get(ctx context.Context, ID string) (map[model.Foo]model.Bar, error) {
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -1928,17 +2004,10 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 
 	memo := s.memo
 	var res []byte
-	var hitRedis bool
-	if false {
-		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-	} else {
-		hitRedis = true
-		res, err = memo.GetCached(ctx, key)
-	}
+
+	res, err = memo.GetCached(ctx, key)
 	if err == nil {
-		if hitRedis {
-			s.client.logger.Log(s.tag, key, Hit)
-		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -1948,12 +2017,9 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	var resourceLock bool
-	if hitRedis {
-		resourceLock, err = memo.Lock(ctx, key)
-		if err != nil {
-			return t, err
-		}
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
 	}
 
 	if resourceLock {
@@ -1970,11 +2036,8 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 		return value, err
 	}
 
-	if false {
-		res, err = memo.WaitSingle(ctx, key)
-	} else {
-		res, err = memo.Wait(ctx, key)
-	}
+	res, err = memo.Wait(ctx, key)
+
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
@@ -2185,6 +2248,28 @@ func (s *simpleFlightCache) GetP(ctx context.Context, pp *cacheme.CachePipeline,
 }
 
 func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t string
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.(string), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *simpleFlightCache) get(ctx context.Context, ID string) (string, error) {
 	params := make(map[string]string)
 
 	params["ID"] = ID
@@ -2198,17 +2283,10 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 
 	memo := s.memo
 	var res []byte
-	var hitRedis bool
-	if true {
-		res, hitRedis, err = memo.GetCachedSingle(ctx, key)
-	} else {
-		hitRedis = true
-		res, err = memo.GetCached(ctx, key)
-	}
+
+	res, err = memo.GetCached(ctx, key)
 	if err == nil {
-		if hitRedis {
-			s.client.logger.Log(s.tag, key, Hit)
-		}
+		s.client.logger.Log(s.tag, key, Hit)
 		err = cacheme.Unmarshal(res, &t)
 		return t, err
 	}
@@ -2218,12 +2296,9 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 	}
 	s.client.logger.Log(s.tag, key, Miss)
 
-	var resourceLock bool
-	if hitRedis {
-		resourceLock, err = memo.Lock(ctx, key)
-		if err != nil {
-			return t, err
-		}
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
 	}
 
 	if resourceLock {
@@ -2240,11 +2315,8 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 		return value, err
 	}
 
-	if true {
-		res, err = memo.WaitSingle(ctx, key)
-	} else {
-		res, err = memo.Wait(ctx, key)
-	}
+	res, err = memo.Wait(ctx, key)
+
 	if err == nil {
 		err = cacheme.Unmarshal(res, &t)
 		return t, err

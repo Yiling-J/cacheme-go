@@ -202,7 +202,7 @@ for _, promise := range psf {
 Invalid all cache with version:
 ```go
 // invalid all version 1 simple cache
-client.SimpleCacheStore.InvalidAll(ctx, 1)
+client.SimpleCacheStore.InvalidAll(ctx, "1")
 ```
 
 ## Schema Definition

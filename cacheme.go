@@ -84,7 +84,7 @@ type StoreSchema struct {
 	Name         string
 	Key          string
 	To           interface{}
-	Version      int
+	Version      interface{}
 	Vars         []string
 	TTL          time.Duration
 	Singleflight bool
@@ -92,7 +92,8 @@ type StoreSchema struct {
 
 type storeInfo struct {
 	StoreSchema
-	Type string
+	Type        string
+	VersionInfo *versionInfo
 }
 
 func (s *StoreSchema) SetVars(a []string) {
@@ -128,7 +129,40 @@ func pkgPath(t reflect.Type) string {
 	return pkg
 }
 
-func SchemaToStore(prefix string, stores []*StoreSchema, save bool) error {
+type versionInfo struct {
+	typ string
+}
+
+func (v *versionInfo) IsFunc() bool {
+	return v.typ == "func"
+}
+
+func (v *versionInfo) IsString() bool {
+	return v.typ == "str"
+}
+
+func (v *versionInfo) IsInt() bool {
+	return v.typ == "int"
+}
+
+func getVersionInfo(i interface{}) (*versionInfo, error) {
+	typ := reflect.TypeOf(i)
+	if typ.Kind() == reflect.String {
+		return &versionInfo{typ: "str"}, nil
+	}
+	if typ.Kind() == reflect.Int {
+		return &versionInfo{typ: "int"}, nil
+	}
+	if typ.Kind() != reflect.Func {
+		return nil, errors.New("version type not supported")
+	}
+	if typ.NumIn() != 0 || typ.NumOut() != 1 || typ.Out(0).Kind() != reflect.String {
+		return nil, errors.New("version function not valid")
+	}
+	return &versionInfo{typ: "func"}, nil
+}
+
+func SchemaToStore(schemaPath string, prefix string, stores []*StoreSchema, save bool) error {
 	patternMapping := make(map[string]bool)
 	nameMapping := make(map[string]bool)
 	var info []storeInfo
@@ -137,6 +171,11 @@ func SchemaToStore(prefix string, stores []*StoreSchema, save bool) error {
 	for _, s := range stores {
 		vars := []string{}
 		kt := s.Key
+
+		version, err := getVersionInfo(s.Version)
+		if err != nil {
+			return err
+		}
 
 		if n, ok := nameMapping[s.Name]; ok {
 			fmt.Println("find duplicate name", n)
@@ -162,6 +201,7 @@ func SchemaToStore(prefix string, stores []*StoreSchema, save bool) error {
 		info = append(info, storeInfo{
 			StoreSchema: *s,
 			Type:        t.String(),
+			VersionInfo: version,
 		})
 		all := strings.Split(path, "|")
 		for _, p := range all {
@@ -171,7 +211,7 @@ func SchemaToStore(prefix string, stores []*StoreSchema, save bool) error {
 		}
 	}
 
-	var imports []string
+	imports := []string{schemaPath}
 	for k := range importMap {
 		imports = append(imports, k)
 	}

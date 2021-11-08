@@ -38,7 +38,7 @@ import schema "{{.}}/cacheme/schema"
 
 
 func main() {
-    err := cm.SchemaToStore(schema.Prefix, schema.Stores, true)
+    err := cm.SchemaToStore("{{.}}/cacheme/schema", schema.Prefix, schema.Stores, true)
     if err != nil {
         os.Exit(1)
     }

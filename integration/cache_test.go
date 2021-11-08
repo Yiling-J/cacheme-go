@@ -243,19 +243,19 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Equal(t, 2, fetcher.SimpleCacheStoreCounter)
 
 			// test invalid all
-			err = client.SimpleCacheStore.InvalidAll(ctx, 1)
+			err = client.SimpleCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooCacheStore.InvalidAll(ctx, 1)
+			err = client.FooCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooMapCacheStore.InvalidAll(ctx, 1)
+			err = client.FooMapCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooPCacheStore.InvalidAll(ctx, 1)
+			err = client.FooPCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooListCacheStore.InvalidAll(ctx, 1)
+			err = client.FooListCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooListPCacheStore.InvalidAll(ctx, 1)
+			err = client.FooListPCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.SimpleFlightCacheStore.InvalidAll(ctx, 1)
+			err = client.SimpleFlightCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
 
 			// test get again,  counter should be 2 now
@@ -288,7 +288,7 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Equal(t, 2, fetcher.SimpleFlightCacheStoreCounter)
 
 			// test cache warm
-			err = client.SimpleCacheStore.InvalidAll(ctx, 1)
+			err = client.SimpleCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
 			fetcher.Tester = "test"
 			err = client.SimpleCacheStore.Update(ctx, "1")

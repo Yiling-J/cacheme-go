@@ -13,6 +13,8 @@ import (
 	cacheme "github.com/Yiling-J/cacheme-go"
 	"github.com/go-redis/redis/v8"
 
+	"github.com/Yiling-J/cacheme-go/integration/cacheme/schema"
+
 	"github.com/Yiling-J/cacheme-go/integration/model"
 )
 
@@ -22,12 +24,36 @@ const (
 	Fetch = "FETCH"
 )
 
+func init() {
+
+	SimpleCacheStore.versionFunc = schema.Stores[0].Version.(func() string)
+
+	FooMapCacheStore.version = schema.Stores[1].Version.(string)
+
+	FooCacheStore.version = schema.Stores[2].Version.(string)
+
+	BarCacheStore.versionFunc = schema.Stores[3].Version.(func() string)
+
+	FooPCacheStore.version = strconv.Itoa(schema.Stores[4].Version.(int))
+
+	FooListCacheStore.version = strconv.Itoa(schema.Stores[5].Version.(int))
+
+	FooListPCacheStore.version = strconv.Itoa(schema.Stores[6].Version.(int))
+
+	FooMapSCacheStore.version = strconv.Itoa(schema.Stores[7].Version.(int))
+
+	SimpleFlightCacheStore.version = strconv.Itoa(schema.Stores[8].Version.(int))
+
+}
+
 type Client struct {
 	SimpleCacheStore *simpleCache
 
 	FooMapCacheStore *fooMapCache
 
 	FooCacheStore *fooCache
+
+	BarCacheStore *barCache
 
 	FooPCacheStore *fooPCache
 
@@ -64,6 +90,9 @@ func New(redis cacheme.RedisClient) *Client {
 	client.FooCacheStore = FooCacheStore.Clone(client.redis)
 	client.FooCacheStore.SetClient(client)
 
+	client.BarCacheStore = BarCacheStore.Clone(client.redis)
+	client.BarCacheStore.SetClient(client)
+
 	client.FooPCacheStore = FooPCacheStore.Clone(client.redis)
 	client.FooPCacheStore.SetClient(client)
 
@@ -94,6 +123,9 @@ func NewCluster(redis cacheme.RedisClient) *Client {
 
 	client.FooCacheStore = FooCacheStore.Clone(client.redis)
 	client.FooCacheStore.SetClient(client)
+
+	client.BarCacheStore = BarCacheStore.Clone(client.redis)
+	client.BarCacheStore.SetClient(client)
 
 	client.FooPCacheStore = FooPCacheStore.Clone(client.redis)
 	client.FooPCacheStore.SetClient(client)
@@ -127,6 +159,8 @@ var stores = []cacheme.CacheStore{
 
 	FooCacheStore,
 
+	BarCacheStore,
+
 	FooPCacheStore,
 
 	FooListCacheStore,
@@ -139,10 +173,12 @@ var stores = []cacheme.CacheStore{
 }
 
 type simpleCache struct {
-	Fetch  func(ctx context.Context, ID string) (string, error)
-	tag    string
-	memo   *cacheme.RedisMemoLock
-	client *Client
+	Fetch       func(ctx context.Context, ID string) (string, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
 }
 
 type SimplePromise struct {
@@ -230,8 +266,15 @@ func (s *simpleCache) Clone(r cacheme.RedisClient) *simpleCache {
 	return new
 }
 
+func (s *simpleCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
 func (s *simpleCache) KeyTemplate() string {
-	return "simple:{{.ID}}" + ":v1"
+	return "simple:{{.ID}}" + ":v" + s.Version()
 }
 
 func (s *simpleCache) Key(m map[string]string) (string, error) {
@@ -243,11 +286,11 @@ func (s *simpleCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *simpleCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v1"
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *simpleCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *simpleCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *simpleCache) AddMemoLock() error {
@@ -408,7 +451,7 @@ func (s *simpleCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
-func (s *simpleCache) InvalidAll(ctx context.Context, version int) error {
+func (s *simpleCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
@@ -418,10 +461,12 @@ func (s *simpleCache) InvalidAll(ctx context.Context, version int) error {
 }
 
 type fooMapCache struct {
-	Fetch  func(ctx context.Context, ID string) (map[string]string, error)
-	tag    string
-	memo   *cacheme.RedisMemoLock
-	client *Client
+	Fetch       func(ctx context.Context, ID string) (map[string]string, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
 }
 
 type FooMapPromise struct {
@@ -509,8 +554,15 @@ func (s *fooMapCache) Clone(r cacheme.RedisClient) *fooMapCache {
 	return new
 }
 
+func (s *fooMapCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
 func (s *fooMapCache) KeyTemplate() string {
-	return "foomap:{{.ID}}" + ":v1"
+	return "foomap:{{.ID}}" + ":v" + s.Version()
 }
 
 func (s *fooMapCache) Key(m map[string]string) (string, error) {
@@ -522,11 +574,11 @@ func (s *fooMapCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooMapCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v1"
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *fooMapCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *fooMapCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *fooMapCache) AddMemoLock() error {
@@ -687,7 +739,7 @@ func (s *fooMapCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
-func (s *fooMapCache) InvalidAll(ctx context.Context, version int) error {
+func (s *fooMapCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
@@ -697,10 +749,12 @@ func (s *fooMapCache) InvalidAll(ctx context.Context, version int) error {
 }
 
 type fooCache struct {
-	Fetch  func(ctx context.Context, ID string) (model.Foo, error)
-	tag    string
-	memo   *cacheme.RedisMemoLock
-	client *Client
+	Fetch       func(ctx context.Context, ID string) (model.Foo, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
 }
 
 type FooPromise struct {
@@ -788,8 +842,15 @@ func (s *fooCache) Clone(r cacheme.RedisClient) *fooCache {
 	return new
 }
 
+func (s *fooCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
 func (s *fooCache) KeyTemplate() string {
-	return "foo:{{.ID}}:info" + ":v1"
+	return "foo:{{.ID}}:info" + ":v" + s.Version()
 }
 
 func (s *fooCache) Key(m map[string]string) (string, error) {
@@ -801,11 +862,11 @@ func (s *fooCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v1"
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *fooCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *fooCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *fooCache) AddMemoLock() error {
@@ -966,7 +1027,295 @@ func (s *fooCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
-func (s *fooCache) InvalidAll(ctx context.Context, version int) error {
+func (s *fooCache) InvalidAll(ctx context.Context, version string) error {
+	group := s.versionedGroup(version)
+	if s.client.cluster {
+		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
+	}
+	return cacheme.InvalidAll(ctx, group, s.client.redis)
+
+}
+
+type barCache struct {
+	Fetch       func(ctx context.Context, ID string) (model.Bar, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
+}
+
+type BarPromise struct {
+	executed     chan bool
+	redisPromise *redis.StringCmd
+	result       model.Bar
+	error        error
+	store        *barCache
+	ctx          context.Context
+}
+
+func (p *BarPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+	defer cp.Wg.Done()
+	var t model.Bar
+	memo := p.store.memo
+
+	<-cp.Executed
+	value, err := p.redisPromise.Bytes()
+	if err == nil {
+		p.store.client.logger.Log(p.store.tag, key, Hit)
+		err = cacheme.Unmarshal(value, &t)
+		p.result, p.error = t, err
+		return
+	}
+
+	resourceLock, err := memo.Lock(p.ctx, key)
+	if err != nil {
+		p.error = err
+		return
+	}
+	p.store.client.logger.Log(p.store.tag, key, Miss)
+
+	if resourceLock {
+		p.store.client.logger.Log(p.store.tag, key, Fetch)
+		value, err := p.store.Fetch(
+			p.ctx,
+			ID)
+		if err != nil {
+			p.error = err
+			return
+		}
+		p.result = value
+		packed, err := cacheme.Marshal(value)
+		if err == nil {
+			memo.SetCache(p.ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(p.ctx, p.store.Group(), key)
+		}
+		p.error = err
+		return
+	}
+
+	var res []byte
+	if false {
+		res, err = memo.WaitSingle(p.ctx, key)
+	} else {
+		res, err = memo.Wait(p.ctx, key)
+	}
+	if err == nil {
+		err = cacheme.Unmarshal(res, &t)
+	}
+	p.result, p.error = t, err
+}
+
+func (p *BarPromise) Result() (model.Bar, error) {
+	return p.result, p.error
+}
+
+var BarCacheStore = &barCache{tag: "Bar"}
+
+func (s *barCache) SetClient(c *Client) {
+	s.client = c
+}
+
+func (s *barCache) Clone(r cacheme.RedisClient) *barCache {
+	value := *s
+	new := &value
+	lock, err := cacheme.NewRedisMemoLock(
+		context.TODO(), "cacheme", r, s.tag, 5*time.Second,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	new.memo = lock
+
+	return new
+}
+
+func (s *barCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
+func (s *barCache) KeyTemplate() string {
+	return "bar:{{.ID}}:info" + ":v" + s.Version()
+}
+
+func (s *barCache) Key(m map[string]string) (string, error) {
+	t := template.Must(template.New("").Parse(s.KeyTemplate()))
+	t = t.Option("missingkey=zero")
+	var tpl bytes.Buffer
+	err := t.Execute(&tpl, m)
+	return tpl.String(), err
+}
+
+func (s *barCache) Group() string {
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+}
+
+func (s *barCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
+}
+
+func (s *barCache) AddMemoLock() error {
+	lock, err := cacheme.NewRedisMemoLock(context.TODO(), "cacheme", s.client.redis, s.tag, 5*time.Second)
+	if err != nil {
+		return err
+	}
+
+	s.memo = lock
+	return nil
+}
+
+func (s *barCache) Initialized() bool {
+	return s.Fetch != nil
+}
+
+func (s *barCache) Tag() string {
+	return s.tag
+}
+
+func (s *barCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*BarPromise, error) {
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheme := s.memo
+
+	promise := &BarPromise{
+		executed: pp.Executed,
+		ctx:      ctx,
+		store:    s,
+	}
+
+	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
+	promise.redisPromise = wait
+	pp.Wg.Add(1)
+	go promise.WaitExecute(
+		pp, key, ID)
+	return promise, nil
+}
+
+func (s *barCache) Get(ctx context.Context, ID string) (model.Bar, error) {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t model.Bar
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	if true {
+		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
+			return s.get(ctx, ID)
+		})
+		return data.(model.Bar), err
+	}
+	return s.get(ctx, ID)
+}
+
+func (s *barCache) get(ctx context.Context, ID string) (model.Bar, error) {
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	var t model.Bar
+
+	key, err := s.Key(params)
+	if err != nil {
+		return t, err
+	}
+
+	memo := s.memo
+	var res []byte
+
+	res, err = memo.GetCached(ctx, key)
+	if err == nil {
+		s.client.logger.Log(s.tag, key, Hit)
+		err = cacheme.Unmarshal(res, &t)
+		return t, err
+	}
+
+	if err != redis.Nil {
+		return t, errors.New("")
+	}
+	s.client.logger.Log(s.tag, key, Miss)
+
+	resourceLock, err := memo.Lock(ctx, key)
+	if err != nil {
+		return t, err
+	}
+
+	if resourceLock {
+		s.client.logger.Log(s.tag, key, Fetch)
+		value, err := s.Fetch(ctx, ID)
+		if err != nil {
+			return value, err
+		}
+		packed, err := cacheme.Marshal(value)
+		if err == nil {
+			memo.SetCache(ctx, key, packed, time.Millisecond*300000)
+			memo.AddGroup(ctx, s.Group(), key)
+		}
+		return value, err
+	}
+
+	res, err = memo.Wait(ctx, key)
+
+	if err == nil {
+		err = cacheme.Unmarshal(res, &t)
+		return t, err
+	}
+	return t, err
+}
+
+func (s *barCache) Update(ctx context.Context, ID string) error {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return err
+	}
+
+	value, err := s.Fetch(ctx, ID)
+	if err != nil {
+		return err
+	}
+	packed, err := cacheme.Marshal(value)
+	if err == nil {
+		s.memo.SetCache(ctx, key, packed, time.Millisecond*300000)
+		s.memo.AddGroup(ctx, s.Group(), key)
+	}
+	return err
+}
+
+func (s *barCache) Invalid(ctx context.Context, ID string) error {
+
+	params := make(map[string]string)
+
+	params["ID"] = ID
+
+	key, err := s.Key(params)
+	if err != nil {
+		return err
+	}
+	return s.memo.DeleteCache(ctx, key)
+
+}
+
+func (s *barCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
@@ -976,10 +1325,12 @@ func (s *fooCache) InvalidAll(ctx context.Context, version int) error {
 }
 
 type fooPCache struct {
-	Fetch  func(ctx context.Context, ID string) (*model.Foo, error)
-	tag    string
-	memo   *cacheme.RedisMemoLock
-	client *Client
+	Fetch       func(ctx context.Context, ID string) (*model.Foo, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
 }
 
 type FooPPromise struct {
@@ -1067,8 +1418,15 @@ func (s *fooPCache) Clone(r cacheme.RedisClient) *fooPCache {
 	return new
 }
 
+func (s *fooPCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
 func (s *fooPCache) KeyTemplate() string {
-	return "foop:{{.ID}}:info" + ":v1"
+	return "foop:{{.ID}}:info" + ":v" + s.Version()
 }
 
 func (s *fooPCache) Key(m map[string]string) (string, error) {
@@ -1080,11 +1438,11 @@ func (s *fooPCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooPCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v1"
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *fooPCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *fooPCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *fooPCache) AddMemoLock() error {
@@ -1245,7 +1603,7 @@ func (s *fooPCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
-func (s *fooPCache) InvalidAll(ctx context.Context, version int) error {
+func (s *fooPCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
@@ -1255,10 +1613,12 @@ func (s *fooPCache) InvalidAll(ctx context.Context, version int) error {
 }
 
 type fooListCache struct {
-	Fetch  func(ctx context.Context, ID string) ([]model.Foo, error)
-	tag    string
-	memo   *cacheme.RedisMemoLock
-	client *Client
+	Fetch       func(ctx context.Context, ID string) ([]model.Foo, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
 }
 
 type FooListPromise struct {
@@ -1346,8 +1706,15 @@ func (s *fooListCache) Clone(r cacheme.RedisClient) *fooListCache {
 	return new
 }
 
+func (s *fooListCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
 func (s *fooListCache) KeyTemplate() string {
-	return "foo:list:{{.ID}}" + ":v1"
+	return "foo:list:{{.ID}}" + ":v" + s.Version()
 }
 
 func (s *fooListCache) Key(m map[string]string) (string, error) {
@@ -1359,11 +1726,11 @@ func (s *fooListCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooListCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v1"
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *fooListCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *fooListCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *fooListCache) AddMemoLock() error {
@@ -1524,7 +1891,7 @@ func (s *fooListCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
-func (s *fooListCache) InvalidAll(ctx context.Context, version int) error {
+func (s *fooListCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
@@ -1534,10 +1901,12 @@ func (s *fooListCache) InvalidAll(ctx context.Context, version int) error {
 }
 
 type fooListPCache struct {
-	Fetch  func(ctx context.Context, ID string) ([]*model.Foo, error)
-	tag    string
-	memo   *cacheme.RedisMemoLock
-	client *Client
+	Fetch       func(ctx context.Context, ID string) ([]*model.Foo, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
 }
 
 type FooListPPromise struct {
@@ -1625,8 +1994,15 @@ func (s *fooListPCache) Clone(r cacheme.RedisClient) *fooListPCache {
 	return new
 }
 
+func (s *fooListPCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
 func (s *fooListPCache) KeyTemplate() string {
-	return "foo:listp:{{.ID}}" + ":v1"
+	return "foo:listp:{{.ID}}" + ":v" + s.Version()
 }
 
 func (s *fooListPCache) Key(m map[string]string) (string, error) {
@@ -1638,11 +2014,11 @@ func (s *fooListPCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooListPCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v1"
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *fooListPCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *fooListPCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *fooListPCache) AddMemoLock() error {
@@ -1803,7 +2179,7 @@ func (s *fooListPCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
-func (s *fooListPCache) InvalidAll(ctx context.Context, version int) error {
+func (s *fooListPCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
@@ -1813,10 +2189,12 @@ func (s *fooListPCache) InvalidAll(ctx context.Context, version int) error {
 }
 
 type fooMapSCache struct {
-	Fetch  func(ctx context.Context, ID string) (map[model.Foo]model.Bar, error)
-	tag    string
-	memo   *cacheme.RedisMemoLock
-	client *Client
+	Fetch       func(ctx context.Context, ID string) (map[model.Foo]model.Bar, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
 }
 
 type FooMapSPromise struct {
@@ -1904,8 +2282,15 @@ func (s *fooMapSCache) Clone(r cacheme.RedisClient) *fooMapSCache {
 	return new
 }
 
+func (s *fooMapSCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
 func (s *fooMapSCache) KeyTemplate() string {
-	return "foo:maps:{{.ID}}" + ":v1"
+	return "foo:maps:{{.ID}}" + ":v" + s.Version()
 }
 
 func (s *fooMapSCache) Key(m map[string]string) (string, error) {
@@ -1917,11 +2302,11 @@ func (s *fooMapSCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *fooMapSCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v1"
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *fooMapSCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *fooMapSCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *fooMapSCache) AddMemoLock() error {
@@ -2082,7 +2467,7 @@ func (s *fooMapSCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
-func (s *fooMapSCache) InvalidAll(ctx context.Context, version int) error {
+func (s *fooMapSCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)
@@ -2092,10 +2477,12 @@ func (s *fooMapSCache) InvalidAll(ctx context.Context, version int) error {
 }
 
 type simpleFlightCache struct {
-	Fetch  func(ctx context.Context, ID string) (string, error)
-	tag    string
-	memo   *cacheme.RedisMemoLock
-	client *Client
+	Fetch       func(ctx context.Context, ID string) (string, error)
+	tag         string
+	memo        *cacheme.RedisMemoLock
+	client      *Client
+	version     string
+	versionFunc func() string
 }
 
 type SimpleFlightPromise struct {
@@ -2183,8 +2570,15 @@ func (s *simpleFlightCache) Clone(r cacheme.RedisClient) *simpleFlightCache {
 	return new
 }
 
+func (s *simpleFlightCache) Version() string {
+	if s.versionFunc != nil {
+		return s.versionFunc()
+	}
+	return s.version
+}
+
 func (s *simpleFlightCache) KeyTemplate() string {
-	return "simple:flight:{{.ID}}" + ":v1"
+	return "simple:flight:{{.ID}}" + ":v" + s.Version()
 }
 
 func (s *simpleFlightCache) Key(m map[string]string) (string, error) {
@@ -2196,11 +2590,11 @@ func (s *simpleFlightCache) Key(m map[string]string) (string, error) {
 }
 
 func (s *simpleFlightCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v1"
+	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *simpleFlightCache) versionedGroup(v int) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *simpleFlightCache) versionedGroup(v string) string {
+	return "cacheme" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *simpleFlightCache) AddMemoLock() error {
@@ -2361,7 +2755,7 @@ func (s *simpleFlightCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
-func (s *simpleFlightCache) InvalidAll(ctx context.Context, version int) error {
+func (s *simpleFlightCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {
 		return cacheme.InvalidAllCluster(ctx, group, s.client.redis)

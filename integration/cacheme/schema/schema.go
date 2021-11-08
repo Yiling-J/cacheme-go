@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"strconv"
 	"time"
 
 	cacheme "github.com/Yiling-J/cacheme-go"
@@ -17,21 +18,28 @@ var (
 			Name:    "Simple",
 			Key:     "simple:{{.ID}}",
 			To:      "",
-			Version: 1,
+			Version: func() string { return "1" },
 			TTL:     5 * time.Minute,
 		},
 		{
 			Name:    "FooMap",
 			Key:     "foomap:{{.ID}}",
 			To:      map[string]string{},
-			Version: 1,
+			Version: "1",
 			TTL:     5 * time.Minute,
 		},
 		{
 			Name:    "Foo",
 			Key:     "foo:{{.ID}}:info",
 			To:      model.Foo{},
-			Version: 1,
+			Version: "1",
+			TTL:     5 * time.Minute,
+		},
+		{
+			Name:    "Bar",
+			Key:     "bar:{{.ID}}:info",
+			To:      model.Bar{},
+			Version: func() string { return strconv.Itoa(model.BarVersion) },
 			TTL:     5 * time.Minute,
 		},
 		{

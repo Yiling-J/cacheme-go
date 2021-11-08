@@ -27,7 +27,7 @@ func TestSchemaToStore(t *testing.T) {
 		},
 	}
 
-	err := cacheme.SchemaToStore("", stores, false)
+	err := cacheme.SchemaToStore("fmt", "", stores, false)
 	require.NotNil(t, err)
 
 	// duplicate name
@@ -47,7 +47,7 @@ func TestSchemaToStore(t *testing.T) {
 			TTL:     5 * time.Minute,
 		},
 	}
-	err = cacheme.SchemaToStore("", stores, false)
+	err = cacheme.SchemaToStore("fmt", "", stores, false)
 	require.NotNil(t, err)
 
 	// ok
@@ -63,11 +63,63 @@ func TestSchemaToStore(t *testing.T) {
 			Name:    "Simple2",
 			Key:     "simple2:{{.ID2}}",
 			To:      "string",
-			Version: 1,
+			Version: "1",
 			TTL:     5 * time.Minute,
 		},
 	}
-	err = cacheme.SchemaToStore("", stores, false)
+	err = cacheme.SchemaToStore("fmt", "", stores, false)
 	require.Nil(t, err)
+
+	// not valid version
+	stores = []*cacheme.StoreSchema{
+		{
+			Name:    "Simple",
+			Key:     "simple:{{.ID}}",
+			To:      "string",
+			Version: 3.22,
+			TTL:     5 * time.Minute,
+		},
+	}
+	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	require.NotNil(t, err)
+
+	// not valid version
+	stores = []*cacheme.StoreSchema{
+		{
+			Name:    "Simple",
+			Key:     "simple:{{.ID}}",
+			To:      "string",
+			Version: func() int { return 12 },
+			TTL:     5 * time.Minute,
+		},
+	}
+	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	require.NotNil(t, err)
+
+	// not valid version
+	stores = []*cacheme.StoreSchema{
+		{
+			Name:    "Simple",
+			Key:     "simple:{{.ID}}",
+			To:      "string",
+			Version: func(i string) string { return "" },
+			TTL:     5 * time.Minute,
+		},
+	}
+	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	require.NotNil(t, err)
+
+	// not valid version
+	stores = []*cacheme.StoreSchema{
+		{
+			Name:    "Simple",
+			Key:     "simple:{{.ID}}",
+			To:      "string",
+			Version: time.Now(),
+			TTL:     5 * time.Minute,
+		},
+	}
+	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	require.NotNil(t, err)
 
 }

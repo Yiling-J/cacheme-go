@@ -243,19 +243,19 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Equal(t, 2, fetcher.SimpleCacheStoreCounter)
 
 			// test invalid all
-			err = client.SimpleCacheStore.InvalidAll(ctx, 1)
+			err = client.SimpleCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooCacheStore.InvalidAll(ctx, 1)
+			err = client.FooCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooMapCacheStore.InvalidAll(ctx, 1)
+			err = client.FooMapCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooPCacheStore.InvalidAll(ctx, 1)
+			err = client.FooPCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooListCacheStore.InvalidAll(ctx, 1)
+			err = client.FooListCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.FooListPCacheStore.InvalidAll(ctx, 1)
+			err = client.FooListPCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
-			err = client.SimpleFlightCacheStore.InvalidAll(ctx, 1)
+			err = client.SimpleFlightCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
 
 			// test get again,  counter should be 2 now
@@ -288,7 +288,7 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Equal(t, 2, fetcher.SimpleFlightCacheStoreCounter)
 
 			// test cache warm
-			err = client.SimpleCacheStore.InvalidAll(ctx, 1)
+			err = client.SimpleCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
 			fetcher.Tester = "test"
 			err = client.SimpleCacheStore.Update(ctx, "1")
@@ -518,4 +518,35 @@ func TestSingleFlightCocurrency(t *testing.T) {
 	require.True(t, ok)
 	fmt.Println(hit)
 	require.True(t, hit < 50)
+}
+
+func TestCacheVersion(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	ctx := context.TODO()
+
+	_, err := client.BarCacheStore.Get(ctx, "foo")
+	require.Nil(t, err)
+
+	keys, err := client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected := []string{
+		"cacheme:bar:foo:info:v6", // cache key
+		"cacheme:group:Bar:v6",    // group key
+	}
+	require.ElementsMatch(t, keys, expected)
+	CleanRedis()
+
+	model.BarVersion = 12
+	_, err = client.BarCacheStore.Get(ctx, "foo")
+	require.Nil(t, err)
+
+	keys, err = client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected = []string{
+		"cacheme:bar:foo:info:v12", // cache key
+		"cacheme:group:Bar:v12",    // group key
+	}
+	require.ElementsMatch(t, keys, expected)
 }

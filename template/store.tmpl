@@ -23,6 +23,18 @@ const (
 	Fetch     = "FETCH"
 )
 
+func init() {
+{{ range $index, $store := .Stores}}
+   {{if $store.VersionInfo.IsString}}
+   {{.Name}}CacheStore.version = schema.Stores[{{$index}}].Version.(string)
+   {{else if $store.VersionInfo.IsInt}}
+   {{.Name}}CacheStore.version = strconv.Itoa(schema.Stores[{{$index}}].Version.(int))
+   {{else}}
+   {{.Name}}CacheStore.versionFunc = schema.Stores[{{$index}}].Version.(func() string)
+   {{end}}
+{{end}}
+}
+
 type Client struct {
      	{{range .Stores}}
 	{{ $NodeName := .Name | FirstLower  }}
@@ -82,6 +94,8 @@ type {{$NodeName}}Cache struct {
      tag string
      memo *cacheme.RedisMemoLock
      client *Client
+     version string
+     versionFunc func() string
 }
 
 type {{.Name}}Promise struct {
@@ -169,8 +183,15 @@ func (s *{{$NodeName}}Cache) Clone(r cacheme.RedisClient) *{{$NodeName}}Cache {
      return new
 }
 
+func (s *{{$NodeName}}Cache) Version() string {
+     if s.versionFunc != nil {
+     	return s.versionFunc()
+     }
+     return s.version
+}
+
 func (s *{{$NodeName}}Cache) KeyTemplate() string {
-     return "{{.Key}}" + ":v{{.Version}}"
+     return "{{.Key}}" + ":v" + s.Version()
 }
 
 func (s *{{$NodeName}}Cache) Key(m map[string]string) (string, error) {
@@ -182,11 +203,11 @@ func (s *{{$NodeName}}Cache) Key(m map[string]string) (string, error) {
 }
 
 func (s *{{$NodeName}}Cache) Group() string {
-	return "{{$Prefix}}" + ":group:" + s.tag + ":v{{.Version}}"
+	return "{{$Prefix}}" + ":group:" + s.tag + ":v" + s.Version()
 }
 
-func (s *{{$NodeName}}Cache) versionedGroup(v int) string {
-	return "{{$Prefix}}" + ":group:" + s.tag + ":v" + strconv.Itoa(v)
+func (s *{{$NodeName}}Cache) versionedGroup(v string) string {
+	return "{{$Prefix}}" + ":group:" + s.tag + ":v" + v
 }
 
 func (s *{{$NodeName}}Cache) AddMemoLock() error {
@@ -355,7 +376,7 @@ func (s *{{$NodeName}}Cache) Invalid(ctx context.Context, {{ range $index, $elem
 
 }
 
-func (s *{{$NodeName}}Cache) InvalidAll(ctx context.Context, version int) error {
+func (s *{{$NodeName}}Cache) InvalidAll(ctx context.Context, version string) error {
      group := s.versionedGroup(version)
      if s.client.cluster {
      	return cacheme.InvalidAllCluster(ctx, group, s.client.redis)

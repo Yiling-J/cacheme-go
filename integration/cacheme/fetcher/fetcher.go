@@ -133,4 +133,8 @@ func Setup() {
 		return []*model.Foo{{Name: ID + Tester, Bar: model.Bar{Name: ID + Tester + "bar"},
 			BarP: &model.Bar{Name: ID + Tester + "bar"}}}, nil
 	}
+
+	cacheme.BarCacheStore.Fetch = func(ctx context.Context, ID string) (model.Bar, error) {
+		return model.Bar{}, nil
+	}
 }

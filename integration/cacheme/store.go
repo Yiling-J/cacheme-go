@@ -151,27 +151,6 @@ func (c *Client) NewPipeline() *cacheme.CachePipeline {
 
 }
 
-var stores = []cacheme.CacheStore{
-
-	SimpleCacheStore,
-
-	FooMapCacheStore,
-
-	FooCacheStore,
-
-	BarCacheStore,
-
-	FooPCacheStore,
-
-	FooListCacheStore,
-
-	FooListPCacheStore,
-
-	FooMapSCacheStore,
-
-	SimpleFlightCacheStore,
-}
-
 type simpleCache struct {
 	Fetch       func(ctx context.Context, ID string) (string, error)
 	tag         string

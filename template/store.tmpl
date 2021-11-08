@@ -78,12 +78,6 @@ func (c *Client) NewPipeline() *cacheme.CachePipeline {
 
 }
 
-var stores = []cacheme.CacheStore{
-	{{range .Stores}}
-	{{.Name}}CacheStore,
-	{{end}}
-}
-
 {{ $Prefix := .Prefix  }}
 
 {{range .Stores}}

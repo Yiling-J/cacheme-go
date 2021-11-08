@@ -536,5 +536,17 @@ func TestCacheVersion(t *testing.T) {
 		"cacheme:group:Bar:v6",    // group key
 	}
 	require.ElementsMatch(t, keys, expected)
+	CleanRedis()
 
+	model.BarVersion = 12
+	_, err = client.BarCacheStore.Get(ctx, "foo")
+	require.Nil(t, err)
+
+	keys, err = client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected = []string{
+		"cacheme:bar:foo:info:v12", // cache key
+		"cacheme:group:Bar:v12",    // group key
+	}
+	require.ElementsMatch(t, keys, expected)
 }

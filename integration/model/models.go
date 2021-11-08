@@ -1,5 +1,7 @@
 package model
 
+const BarVersion = 6
+
 type Bar struct {
 	Name string
 }

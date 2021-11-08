@@ -519,3 +519,22 @@ func TestSingleFlightCocurrency(t *testing.T) {
 	fmt.Println(hit)
 	require.True(t, hit < 50)
 }
+
+func TestCacheVersion(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	ctx := context.TODO()
+
+	_, err := client.BarCacheStore.Get(ctx, "foo")
+	require.Nil(t, err)
+
+	keys, err := client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected := []string{
+		"cacheme:bar:foo:info:v6", // cache key
+		"cacheme:group:Bar:v6",    // group key
+	}
+	require.ElementsMatch(t, keys, expected)
+
+}

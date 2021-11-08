@@ -216,14 +216,35 @@ Each schema has 5 fields:
 	- struct pointer: `&model.Foo{}`
 	- slice: `[]model.Foo{}`
 	- map: `map[model.Foo]model.Bar{}`
-- **Version** - version number, for schema change.
+- **Version** - version interface, can be `string`, `int`, or callable `func() string`.
 - **TTL** - redis ttl using go time.
 - **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same executable** will call Redis only once 
 
 #### Notes:
 - Duplicate name/key is not allowed.
-
-- If set `Singleflight` to `true`, Redis `GET` command will be wrapped in a [**singleflight**](https://pkg.go.dev/golang.org/x/sync/singleflight), so **concurrent requests to same key** will call `Redis` only once. Let's use some example to explain this:
+- Everytime you update schema, run code generation again.
+- `Version` callable can help you managing version better. Example:
+	```go
+	// models.go
+	const FooCacheVersion = "1"
+	type Foo struct {}
+	const BarCacheVersion = "1"
+	type Bar struct {Foo: Foo}
+	```
+	```go
+	// schema.go
+	// version has 3 parts: foo version & bar version & global version number
+	// if you change struct, update FooCacheVersion or BarCacheVersion
+	// if you change fetcher function or ttl or something else, change global version number
+	{
+		Name:    "Bar",
+		Key:     "bar:{{.ID}}:info",
+		To:      model.Bar{},
+		Version: func() string {return model.FooCacheVersion + model.BarCacheVersion + "1"},
+		TTL:     5 * time.Minute,
+	},
+	```
+- If set `Singleflight` to `true`, Cacheme `Get` command will be wrapped in a [**singleflight**](https://pkg.go.dev/golang.org/x/sync/singleflight), so **concurrent requests to same key** will call `Redis` only once. Let's use some example to explain this:
 	- you have some products to sell, and thousands people will view the detail at same time, so the product key `product:1:info` may be hit 100000 times per second. Now you should turn on **singleflight**, and the actually redis hit may reduce to 5000.
 	- you have cache for user shopping cart `user:123:cart`, only the user himself can see that. Now no need to use **singleflight**, becauese there should't be concurrent requests to that key.
 	- you are using serverless platform, AWS Lambda or similar. So each request runs in isolated environment, can't talk to each other through channels. Then **singleflight** make no sense.

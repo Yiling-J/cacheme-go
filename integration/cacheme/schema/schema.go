@@ -22,6 +22,13 @@ var (
 			TTL:     5 * time.Minute,
 		},
 		{
+			Name:    "SimpleMulti",
+			Key:     "simplem:{{.Foo}}:{{.Bar}}:{{.ID}}",
+			To:      "",
+			Version: 1,
+			TTL:     5 * time.Minute,
+		},
+		{
 			Name:    "FooMap",
 			Key:     "foomap:{{.ID}}",
 			To:      map[string]string{},

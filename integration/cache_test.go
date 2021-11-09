@@ -488,7 +488,28 @@ func TestCacheKey(t *testing.T) {
 		"cacheme:group:Simple:v1", // group key
 	}
 	require.ElementsMatch(t, keys, expected)
+	CleanRedis()
 
+	_, err = client.SimpleMultiCacheStore.Get(ctx, "a", "b", "c")
+	require.Nil(t, err)
+	keys, err = client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected = []string{
+		"cacheme:simplem:a:b:c:v1",     // cache key
+		"cacheme:group:SimpleMulti:v1", // group key
+	}
+	require.ElementsMatch(t, keys, expected)
+	CleanRedis()
+
+	_, err = client.SimpleMultiCacheStore.Get(ctx, "b", "c", "a")
+	require.Nil(t, err)
+	keys, err = client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected = []string{
+		"cacheme:simplem:b:c:a:v1",     // cache key
+		"cacheme:group:SimpleMulti:v1", // group key
+	}
+	require.ElementsMatch(t, keys, expected)
 }
 
 func TestSingleFlightCocurrency(t *testing.T) {
@@ -549,4 +570,28 @@ func TestCacheVersion(t *testing.T) {
 		"cacheme:group:Bar:v12",    // group key
 	}
 	require.ElementsMatch(t, keys, expected)
+}
+
+func TestMultiParams(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	ctx := context.TODO()
+
+	for i := 1; i <= 30; i++ {
+		switch i % 3 {
+		case 0:
+			r, err := client.SimpleMultiCacheStore.Get(ctx, "a", "b", "c")
+			require.Nil(t, err)
+			require.Equal(t, "abc", r)
+		case 1:
+			r, err := client.SimpleMultiCacheStore.Get(ctx, "a", "c", "b")
+			require.Nil(t, err)
+			require.Equal(t, "acb", r)
+		case 2:
+			r, err := client.SimpleMultiCacheStore.Get(ctx, "b", "c", "a")
+			require.Nil(t, err)
+			require.Equal(t, "bca", r)
+		}
+	}
 }

@@ -38,6 +38,10 @@ func Setup() {
 		return ID + Tester, nil
 	}
 
+	cacheme.SimpleMultiCacheStore.Fetch = func(ctx context.Context, Foo, Bar, ID string) (string, error) {
+		return Foo + Bar + ID, nil
+	}
+
 	cacheme.SimpleFlightCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
 		mu.Lock()
 		SimpleFlightCacheStoreCounter++

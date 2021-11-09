@@ -15,6 +15,13 @@ var (
 	// store templates
 	Stores = []*cacheme.StoreSchema{
 		{
+			Name:    "Fix",
+			Key:     "fix",
+			To:      "",
+			Version: 1,
+			TTL:     5 * time.Minute,
+		},
+		{
 			Name:    "Simple",
 			Key:     "simple:{{.ID}}",
 			To:      "",

@@ -11,6 +11,7 @@ import (
 
 var (
 	Tester                        string
+	FixCacheStoreCounter          int
 	SimpleCacheStoreCounter       int
 	FooCacheStoreCounter          int
 	FooPCacheStoreCounter         int
@@ -23,6 +24,13 @@ var (
 )
 
 func Setup() {
+
+	cacheme.FixCacheStore.Fetch = func(ctx context.Context) (string, error) {
+		mu.Lock()
+		FixCacheStoreCounter++
+		mu.Unlock()
+		return "fix", nil
+	}
 
 	cacheme.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
 		mu.Lock()

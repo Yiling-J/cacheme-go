@@ -97,6 +97,7 @@ func CleanRedisCluster() {
 }
 
 func RestCounter() {
+	fetcher.FixCacheStoreCounter = 0
 	fetcher.FooCacheStoreCounter = 0
 	fetcher.FooListCacheStoreCounter = 0
 	fetcher.FooListPCacheStoreCounter = 0
@@ -170,6 +171,9 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			}
 
 			// test get without cache
+			r0, err := client.FixCacheStore.Get(ctx)
+			require.Nil(t, err)
+			require.Equal(t, "fix", r0)
 
 			r1, err := client.SimpleCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)
@@ -200,6 +204,11 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Equal(t, tc.expectedSimple, r7)
 
 			// test get with cache, counter should be 1
+			r0, err = client.FixCacheStore.Get(ctx)
+			require.Nil(t, err)
+			require.Equal(t, "fix", r0)
+			require.Equal(t, 1, fetcher.FixCacheStoreCounter)
+
 			r1, err = client.SimpleCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)
 			require.Equal(t, tc.expectedSimple, r1)
@@ -243,6 +252,8 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Equal(t, 2, fetcher.SimpleCacheStoreCounter)
 
 			// test invalid all
+			err = client.FixCacheStore.InvalidAll(ctx, "1")
+			require.Nil(t, err)
 			err = client.SimpleCacheStore.InvalidAll(ctx, "1")
 			require.Nil(t, err)
 			err = client.FooCacheStore.InvalidAll(ctx, "1")
@@ -259,6 +270,10 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			require.Nil(t, err)
 
 			// test get again,  counter should be 2 now
+			_, err = client.FixCacheStore.Get(ctx)
+			require.Nil(t, err)
+			require.Equal(t, 2, fetcher.FixCacheStoreCounter)
+
 			_, err = client.SimpleCacheStore.Get(ctx, tc.id)
 			require.Nil(t, err)
 			require.Equal(t, 3, fetcher.SimpleCacheStoreCounter)

@@ -266,7 +266,7 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
      }
 
 
-	if true {
+	if {{.Singleflight}} {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 		})

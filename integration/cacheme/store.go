@@ -347,7 +347,7 @@ func (s *fixCache) Get(ctx context.Context) (string, error) {
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx)
 		})
@@ -699,7 +699,7 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, ID)
 		})
@@ -1068,7 +1068,7 @@ func (s *simpleMultiCache) Get(ctx context.Context, Foo string, Bar string, ID s
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, Foo, Bar, ID)
 		})
@@ -1449,7 +1449,7 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, ID)
 		})
@@ -1810,7 +1810,7 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, ID)
 		})
@@ -2171,7 +2171,7 @@ func (s *barCache) Get(ctx context.Context, ID string) (model.Bar, error) {
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, ID)
 		})
@@ -2532,7 +2532,7 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, ID)
 		})
@@ -2893,7 +2893,7 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, ID)
 		})
@@ -3254,7 +3254,7 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, ID)
 		})
@@ -3615,7 +3615,7 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 		return t, err
 	}
 
-	if true {
+	if false {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
 			return s.get(ctx, ID)
 		})

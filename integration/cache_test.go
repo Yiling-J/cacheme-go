@@ -96,7 +96,7 @@ func CleanRedisCluster() {
 
 }
 
-func RestCounter() {
+func ResetCounter() {
 	fetcher.FixCacheStoreCounter = 0
 	fetcher.FooCacheStoreCounter = 0
 	fetcher.FooListCacheStoreCounter = 0
@@ -105,6 +105,7 @@ func RestCounter() {
 	fetcher.FooPCacheStoreCounter = 0
 	fetcher.SimpleCacheStoreCounter = 0
 	fetcher.SimpleFlightCacheStoreCounter = 0
+	fetcher.SimpleMultiCacheStoreCounter = 0
 }
 
 func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
@@ -152,7 +153,7 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			defer cleanFunc()
-			RestCounter()
+			ResetCounter()
 			ctx := context.Background()
 
 			stores := []cachemeo.CacheStore{
@@ -443,7 +444,7 @@ func CacheConcurrencyTestCase(t *testing.T, client *cacheme.Client, cleanFunc fu
 		return ID + fetcher.Tester, nil
 	}
 
-	RestCounter()
+	ResetCounter()
 	var wg sync.WaitGroup
 	ctx := context.Background()
 
@@ -591,6 +592,7 @@ func TestMultiParams(t *testing.T) {
 	fetcher.Setup()
 	client := Cacheme()
 	defer CleanRedis()
+	defer ResetCounter()
 	ctx := context.TODO()
 
 	for i := 1; i <= 30; i++ {
@@ -611,10 +613,7 @@ func TestMultiParams(t *testing.T) {
 	}
 }
 
-func TestGetM(t *testing.T) {
-	fetcher.Setup()
-	client := Cacheme()
-	defer CleanRedis()
+func getmTest(t *testing.T, client *cacheme.Client) {
 	ctx := context.TODO()
 
 	qs, err := client.SimpleMultiCacheStore.
@@ -636,28 +635,29 @@ func TestGetM(t *testing.T) {
 	require.NotNil(t, err)
 }
 
+func TestGetM(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	// no cache
+	getmTest(t, client)
+	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	// cached
+	getmTest(t, client)
+	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	ResetCounter()
+}
+
 func TestGetMCluster(t *testing.T) {
 	fetcher.Setup()
 	client := CachemeCluster()
-	defer CleanRedis()
-	ctx := context.TODO()
-
-	qs, err := client.SimpleMultiCacheStore.
-		GetM("a", "b", "c").
-		GetM("b", "c", "a").
-		GetM("c", "a", "b").Do(ctx)
-	require.Nil(t, err)
-	require.Equal(t, qs.GetSlice(), []string{"abc", "bca", "cab"})
-	v, err := qs.Get("a", "b", "c")
-	require.Nil(t, err)
-	require.Equal(t, "abc", v)
-	v, err = qs.Get("b", "c", "a")
-	require.Nil(t, err)
-	require.Equal(t, "bca", v)
-	v, err = qs.Get("c", "a", "b")
-	require.Nil(t, err)
-	require.Equal(t, "cab", v)
-	_, err = qs.Get("b", "b", "c")
-	require.NotNil(t, err)
+	defer CleanRedisCluster()
+	// no cache
+	getmTest(t, client)
+	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	// cached
+	getmTest(t, client)
+	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	ResetCounter()
 
 }

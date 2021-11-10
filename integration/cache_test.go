@@ -634,6 +634,7 @@ func getmTest(t *testing.T, client *cacheme.Client) {
 	v, err = qs.Get("c", "a", "b")
 	require.Nil(t, err)
 	require.Equal(t, "cab", v)
+	// not exist
 	_, err = qs.Get("b", "b", "c")
 	require.NotNil(t, err)
 }
@@ -677,6 +678,7 @@ func TestMGetSingleFlight(t *testing.T) {
 	_, err := client.SimpleFlightCacheStore.GetM("foo").GetM("bar").GetM("x").GetM("y").Do(ctx)
 	require.Nil(t, err)
 
+	// all of these should use same singleflight group key
 	keys := [][]string{
 		{"foo", "bar", "x", "y"},
 		{"bar", "foo", "x", "y"},
@@ -686,7 +688,7 @@ func TestMGetSingleFlight(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	for i := 1; i <= 200; i++ {
+	for i := 1; i <= 400; i++ {
 		wg.Add(1)
 		go func(c int) {
 			defer wg.Done()

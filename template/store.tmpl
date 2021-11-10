@@ -303,13 +303,15 @@ type {{$NodeName}}QuerySet struct {
 	results map[string]{{.Type}}
 }
 
-func (q *{{$NodeName}}QuerySet) Get({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {{.Type}} {
+func (q *{{$NodeName}}QuerySet) Get({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
 	param := {{$NodeName}}Param{
 	     {{range .Vars}}
      	     {{.}}: {{.}},
      	     {{end}}
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {return v, errors.New("not found")}
+	return v, nil
 }
 
 func (q *{{$NodeName}}QuerySet) GetSlice() []{{.Type}} {

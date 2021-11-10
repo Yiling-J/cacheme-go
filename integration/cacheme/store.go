@@ -375,9 +375,13 @@ type fixQuerySet struct {
 	results map[string]string
 }
 
-func (q *fixQuerySet) Get() string {
+func (q *fixQuerySet) Get() (string, error) {
 	param := fixParam{}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *fixQuerySet) GetSlice() []string {
@@ -753,12 +757,16 @@ type simpleQuerySet struct {
 	results map[string]string
 }
 
-func (q *simpleQuerySet) Get(ID string) string {
+func (q *simpleQuerySet) Get(ID string) (string, error) {
 	param := simpleParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *simpleQuerySet) GetSlice() []string {
@@ -1156,7 +1164,7 @@ type simpleMultiQuerySet struct {
 	results map[string]string
 }
 
-func (q *simpleMultiQuerySet) Get(Foo string, Bar string, ID string) string {
+func (q *simpleMultiQuerySet) Get(Foo string, Bar string, ID string) (string, error) {
 	param := simpleMultiParam{
 
 		Foo: Foo,
@@ -1165,7 +1173,11 @@ func (q *simpleMultiQuerySet) Get(Foo string, Bar string, ID string) string {
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *simpleMultiQuerySet) GetSlice() []string {
@@ -1559,12 +1571,16 @@ type fooMapQuerySet struct {
 	results map[string]map[string]string
 }
 
-func (q *fooMapQuerySet) Get(ID string) map[string]string {
+func (q *fooMapQuerySet) Get(ID string) (map[string]string, error) {
 	param := fooMapParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *fooMapQuerySet) GetSlice() []map[string]string {
@@ -1946,12 +1962,16 @@ type fooQuerySet struct {
 	results map[string]model.Foo
 }
 
-func (q *fooQuerySet) Get(ID string) model.Foo {
+func (q *fooQuerySet) Get(ID string) (model.Foo, error) {
 	param := fooParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *fooQuerySet) GetSlice() []model.Foo {
@@ -2333,12 +2353,16 @@ type barQuerySet struct {
 	results map[string]model.Bar
 }
 
-func (q *barQuerySet) Get(ID string) model.Bar {
+func (q *barQuerySet) Get(ID string) (model.Bar, error) {
 	param := barParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *barQuerySet) GetSlice() []model.Bar {
@@ -2720,12 +2744,16 @@ type fooPQuerySet struct {
 	results map[string]*model.Foo
 }
 
-func (q *fooPQuerySet) Get(ID string) *model.Foo {
+func (q *fooPQuerySet) Get(ID string) (*model.Foo, error) {
 	param := fooPParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *fooPQuerySet) GetSlice() []*model.Foo {
@@ -3107,12 +3135,16 @@ type fooListQuerySet struct {
 	results map[string][]model.Foo
 }
 
-func (q *fooListQuerySet) Get(ID string) []model.Foo {
+func (q *fooListQuerySet) Get(ID string) ([]model.Foo, error) {
 	param := fooListParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *fooListQuerySet) GetSlice() [][]model.Foo {
@@ -3494,12 +3526,16 @@ type fooListPQuerySet struct {
 	results map[string][]*model.Foo
 }
 
-func (q *fooListPQuerySet) Get(ID string) []*model.Foo {
+func (q *fooListPQuerySet) Get(ID string) ([]*model.Foo, error) {
 	param := fooListPParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *fooListPQuerySet) GetSlice() [][]*model.Foo {
@@ -3881,12 +3917,16 @@ type fooMapSQuerySet struct {
 	results map[string]map[model.Foo]model.Bar
 }
 
-func (q *fooMapSQuerySet) Get(ID string) map[model.Foo]model.Bar {
+func (q *fooMapSQuerySet) Get(ID string) (map[model.Foo]model.Bar, error) {
 	param := fooMapSParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *fooMapSQuerySet) GetSlice() []map[model.Foo]model.Bar {
@@ -4268,12 +4308,16 @@ type simpleFlightQuerySet struct {
 	results map[string]string
 }
 
-func (q *simpleFlightQuerySet) Get(ID string) string {
+func (q *simpleFlightQuerySet) Get(ID string) (string, error) {
 	param := simpleFlightParam{
 
 		ID: ID,
 	}
-	return q.results[param.pid()]
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
 }
 
 func (q *simpleFlightQuerySet) GetSlice() []string {

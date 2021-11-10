@@ -370,26 +370,49 @@ type fixMultiGetter struct {
 	keys  []fixParam
 }
 
+type fixQuerySet struct {
+	keys    []string
+	results map[string]string
+}
+
+func (q *fixQuerySet) Get() string {
+	param := fixParam{}
+	return q.results[param.pid()]
+}
+
+func (q *fixQuerySet) GetSlice() []string {
+	var results []string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *fixMultiGetter) GetM() *fixMultiGetter {
 	g.keys = append(g.keys, fixParam{})
 	return g
 }
 
-func (g *fixMultiGetter) Do(ctx context.Context) (map[string]string, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *fixMultiGetter) Do(ctx context.Context) (*fixQuerySet, error) {
+	qs := &fixQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]string), err
-
+		qs.results = data.(map[string]string)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *fixMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
@@ -725,26 +748,52 @@ type simpleMultiGetter struct {
 	keys  []simpleParam
 }
 
+type simpleQuerySet struct {
+	keys    []string
+	results map[string]string
+}
+
+func (q *simpleQuerySet) Get(ID string) string {
+	param := simpleParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *simpleQuerySet) GetSlice() []string {
+	var results []string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *simpleMultiGetter) GetM(ID string) *simpleMultiGetter {
 	g.keys = append(g.keys, simpleParam{ID: ID})
 	return g
 }
 
-func (g *simpleMultiGetter) Do(ctx context.Context) (map[string]string, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *simpleMultiGetter) Do(ctx context.Context) (*simpleQuerySet, error) {
+	qs := &simpleQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]string), err
-
+		qs.results = data.(map[string]string)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *simpleMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
@@ -1102,26 +1151,56 @@ type simpleMultiMultiGetter struct {
 	keys  []simpleMultiParam
 }
 
+type simpleMultiQuerySet struct {
+	keys    []string
+	results map[string]string
+}
+
+func (q *simpleMultiQuerySet) Get(Foo string, Bar string, ID string) string {
+	param := simpleMultiParam{
+
+		Foo: Foo,
+
+		Bar: Bar,
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *simpleMultiQuerySet) GetSlice() []string {
+	var results []string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *simpleMultiMultiGetter) GetM(Foo string, Bar string, ID string) *simpleMultiMultiGetter {
 	g.keys = append(g.keys, simpleMultiParam{Foo: Foo, Bar: Bar, ID: ID})
 	return g
 }
 
-func (g *simpleMultiMultiGetter) Do(ctx context.Context) (map[string]string, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *simpleMultiMultiGetter) Do(ctx context.Context) (*simpleMultiQuerySet, error) {
+	qs := &simpleMultiQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]string), err
-
+		qs.results = data.(map[string]string)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *simpleMultiMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
@@ -1475,26 +1554,52 @@ type fooMapMultiGetter struct {
 	keys  []fooMapParam
 }
 
+type fooMapQuerySet struct {
+	keys    []string
+	results map[string]map[string]string
+}
+
+func (q *fooMapQuerySet) Get(ID string) map[string]string {
+	param := fooMapParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *fooMapQuerySet) GetSlice() []map[string]string {
+	var results []map[string]string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *fooMapMultiGetter) GetM(ID string) *fooMapMultiGetter {
 	g.keys = append(g.keys, fooMapParam{ID: ID})
 	return g
 }
 
-func (g *fooMapMultiGetter) Do(ctx context.Context) (map[string]map[string]string, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *fooMapMultiGetter) Do(ctx context.Context) (*fooMapQuerySet, error) {
+	qs := &fooMapQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]map[string]string), err
-
+		qs.results = data.(map[string]map[string]string)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *fooMapMultiGetter) pipeDo(ctx context.Context) (map[string]map[string]string, error) {
@@ -1836,26 +1941,52 @@ type fooMultiGetter struct {
 	keys  []fooParam
 }
 
+type fooQuerySet struct {
+	keys    []string
+	results map[string]model.Foo
+}
+
+func (q *fooQuerySet) Get(ID string) model.Foo {
+	param := fooParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *fooQuerySet) GetSlice() []model.Foo {
+	var results []model.Foo
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *fooMultiGetter) GetM(ID string) *fooMultiGetter {
 	g.keys = append(g.keys, fooParam{ID: ID})
 	return g
 }
 
-func (g *fooMultiGetter) Do(ctx context.Context) (map[string]model.Foo, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *fooMultiGetter) Do(ctx context.Context) (*fooQuerySet, error) {
+	qs := &fooQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]model.Foo), err
-
+		qs.results = data.(map[string]model.Foo)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *fooMultiGetter) pipeDo(ctx context.Context) (map[string]model.Foo, error) {
@@ -2197,26 +2328,52 @@ type barMultiGetter struct {
 	keys  []barParam
 }
 
+type barQuerySet struct {
+	keys    []string
+	results map[string]model.Bar
+}
+
+func (q *barQuerySet) Get(ID string) model.Bar {
+	param := barParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *barQuerySet) GetSlice() []model.Bar {
+	var results []model.Bar
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *barMultiGetter) GetM(ID string) *barMultiGetter {
 	g.keys = append(g.keys, barParam{ID: ID})
 	return g
 }
 
-func (g *barMultiGetter) Do(ctx context.Context) (map[string]model.Bar, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *barMultiGetter) Do(ctx context.Context) (*barQuerySet, error) {
+	qs := &barQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]model.Bar), err
-
+		qs.results = data.(map[string]model.Bar)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *barMultiGetter) pipeDo(ctx context.Context) (map[string]model.Bar, error) {
@@ -2558,26 +2715,52 @@ type fooPMultiGetter struct {
 	keys  []fooPParam
 }
 
+type fooPQuerySet struct {
+	keys    []string
+	results map[string]*model.Foo
+}
+
+func (q *fooPQuerySet) Get(ID string) *model.Foo {
+	param := fooPParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *fooPQuerySet) GetSlice() []*model.Foo {
+	var results []*model.Foo
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *fooPMultiGetter) GetM(ID string) *fooPMultiGetter {
 	g.keys = append(g.keys, fooPParam{ID: ID})
 	return g
 }
 
-func (g *fooPMultiGetter) Do(ctx context.Context) (map[string]*model.Foo, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *fooPMultiGetter) Do(ctx context.Context) (*fooPQuerySet, error) {
+	qs := &fooPQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]*model.Foo), err
-
+		qs.results = data.(map[string]*model.Foo)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *fooPMultiGetter) pipeDo(ctx context.Context) (map[string]*model.Foo, error) {
@@ -2919,26 +3102,52 @@ type fooListMultiGetter struct {
 	keys  []fooListParam
 }
 
+type fooListQuerySet struct {
+	keys    []string
+	results map[string][]model.Foo
+}
+
+func (q *fooListQuerySet) Get(ID string) []model.Foo {
+	param := fooListParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *fooListQuerySet) GetSlice() [][]model.Foo {
+	var results [][]model.Foo
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *fooListMultiGetter) GetM(ID string) *fooListMultiGetter {
 	g.keys = append(g.keys, fooListParam{ID: ID})
 	return g
 }
 
-func (g *fooListMultiGetter) Do(ctx context.Context) (map[string][]model.Foo, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *fooListMultiGetter) Do(ctx context.Context) (*fooListQuerySet, error) {
+	qs := &fooListQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string][]model.Foo), err
-
+		qs.results = data.(map[string][]model.Foo)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *fooListMultiGetter) pipeDo(ctx context.Context) (map[string][]model.Foo, error) {
@@ -3280,26 +3489,52 @@ type fooListPMultiGetter struct {
 	keys  []fooListPParam
 }
 
+type fooListPQuerySet struct {
+	keys    []string
+	results map[string][]*model.Foo
+}
+
+func (q *fooListPQuerySet) Get(ID string) []*model.Foo {
+	param := fooListPParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *fooListPQuerySet) GetSlice() [][]*model.Foo {
+	var results [][]*model.Foo
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *fooListPMultiGetter) GetM(ID string) *fooListPMultiGetter {
 	g.keys = append(g.keys, fooListPParam{ID: ID})
 	return g
 }
 
-func (g *fooListPMultiGetter) Do(ctx context.Context) (map[string][]*model.Foo, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *fooListPMultiGetter) Do(ctx context.Context) (*fooListPQuerySet, error) {
+	qs := &fooListPQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string][]*model.Foo), err
-
+		qs.results = data.(map[string][]*model.Foo)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *fooListPMultiGetter) pipeDo(ctx context.Context) (map[string][]*model.Foo, error) {
@@ -3641,26 +3876,52 @@ type fooMapSMultiGetter struct {
 	keys  []fooMapSParam
 }
 
+type fooMapSQuerySet struct {
+	keys    []string
+	results map[string]map[model.Foo]model.Bar
+}
+
+func (q *fooMapSQuerySet) Get(ID string) map[model.Foo]model.Bar {
+	param := fooMapSParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *fooMapSQuerySet) GetSlice() []map[model.Foo]model.Bar {
+	var results []map[model.Foo]model.Bar
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *fooMapSMultiGetter) GetM(ID string) *fooMapSMultiGetter {
 	g.keys = append(g.keys, fooMapSParam{ID: ID})
 	return g
 }
 
-func (g *fooMapSMultiGetter) Do(ctx context.Context) (map[string]map[model.Foo]model.Bar, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
+func (g *fooMapSMultiGetter) Do(ctx context.Context) (*fooMapSQuerySet, error) {
+	qs := &fooMapSQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]map[model.Foo]model.Bar), err
-
+		qs.results = data.(map[string]map[model.Foo]model.Bar)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *fooMapSMultiGetter) pipeDo(ctx context.Context) (map[string]map[model.Foo]model.Bar, error) {
@@ -4002,26 +4263,52 @@ type simpleFlightMultiGetter struct {
 	keys  []simpleFlightParam
 }
 
+type simpleFlightQuerySet struct {
+	keys    []string
+	results map[string]string
+}
+
+func (q *simpleFlightQuerySet) Get(ID string) string {
+	param := simpleFlightParam{
+
+		ID: ID,
+	}
+	return q.results[param.pid()]
+}
+
+func (q *simpleFlightQuerySet) GetSlice() []string {
+	var results []string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *simpleFlightMultiGetter) GetM(ID string) *simpleFlightMultiGetter {
 	g.keys = append(g.keys, simpleFlightParam{ID: ID})
 	return g
 }
 
-func (g *simpleFlightMultiGetter) Do(ctx context.Context) (map[string]string, error) {
+func (g *simpleFlightMultiGetter) Do(ctx context.Context) (*simpleFlightQuerySet, error) {
+	qs := &simpleFlightQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
 	if true {
-		var keys []string
-		for _, k := range g.keys {
-			keys = append(keys, k.pid())
-		}
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]string), err
-
+		qs.results = data.(map[string]string)
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *simpleFlightMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {

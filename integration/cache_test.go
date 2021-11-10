@@ -610,3 +610,37 @@ func TestMultiParams(t *testing.T) {
 		}
 	}
 }
+
+func TestGetM(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	ctx := context.TODO()
+
+	qs, err := client.SimpleMultiCacheStore.
+		GetM("a", "b", "c").
+		GetM("b", "c", "a").
+		GetM("c", "a", "b").Do(ctx)
+	require.Nil(t, err)
+	require.Equal(t, qs.GetSlice(), []string{"abc", "bca", "cab"})
+	require.Equal(t, "abc", qs.Get("a", "b", "c"))
+	require.Equal(t, "bca", qs.Get("b", "c", "a"))
+	require.Equal(t, "cab", qs.Get("c", "a", "b"))
+}
+
+func TestGetMCluster(t *testing.T) {
+	fetcher.Setup()
+	client := CachemeCluster()
+	defer CleanRedis()
+	ctx := context.TODO()
+
+	qs, err := client.SimpleMultiCacheStore.
+		GetM("a", "b", "c").
+		GetM("b", "c", "a").
+		GetM("c", "a", "b").Do(ctx)
+	require.Nil(t, err)
+	require.Equal(t, qs.GetSlice(), []string{"abc", "bca", "cab"})
+	require.Equal(t, "abc", qs.Get("a", "b", "c"))
+	require.Equal(t, "bca", qs.Get("b", "c", "a"))
+	require.Equal(t, "cab", qs.Get("c", "a", "b"))
+}

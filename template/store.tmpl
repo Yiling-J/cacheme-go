@@ -298,26 +298,53 @@ type {{$NodeName}}MultiGetter struct {
 	keys  []{{$NodeName}}Param
 }
 
+type {{$NodeName}}QuerySet struct {
+	keys    []string
+	results map[string]{{.Type}}
+}
+
+func (q *{{$NodeName}}QuerySet) Get({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {{.Type}} {
+	param := {{$NodeName}}Param{
+	     {{range .Vars}}
+     	     {{.}}: {{.}},
+     	     {{end}}
+	}
+	return q.results[param.pid()]
+}
+
+func (q *{{$NodeName}}QuerySet) GetSlice() []{{.Type}} {
+	var results []{{.Type}}
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
 func (g *{{$NodeName}}MultiGetter) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$NodeName}}MultiGetter {
 	g.keys = append(g.keys, {{$NodeName}}Param{{"{"}}{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}"}})
 	return g
 }
 
-func (g *{{$NodeName}}MultiGetter) Do(ctx context.Context) (map[string]{{.Type}}, error) {
-	if true {
-		var keys []string
-		for _, k := range g.keys {
-		    keys = append(keys, k.pid())
-		}
+func (g *{{$NodeName}}MultiGetter) Do(ctx context.Context) (*{{$NodeName}}QuerySet, error) {
+     qs := &{{$NodeName}}QuerySet{}
+     var keys []string
+     for _, k := range g.keys {
+     	 pid := k.pid()
+	 qs.keys = append(qs.keys, pid)
+     	 keys = append(keys, pid)
+     }
+	if {{.Singleflight}} {
 		sort.Strings(keys)
 		group := strings.Join(keys, ":")
 		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
 			return g.pipeDo(ctx)
 		})
-		return data.(map[string]{{.Type}}), err
-
+		qs.results = data.(map[string]{{.Type}})
+		return qs, err
 	}
-	return g.pipeDo(ctx)
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
 }
 
 func (g *{{$NodeName}}MultiGetter) pipeDo(ctx context.Context) (map[string]{{.Type}}, error) {

@@ -26,20 +26,20 @@ const (
 )
 
 func init() {
-{{ range $index, $store := .Stores}}
+{{range $index, $store := .Stores}}
    {{if $store.VersionInfo.IsString}}
    {{.Name}}CacheStore.version = schema.Stores[{{$index}}].Version.(string)
-   {{else if $store.VersionInfo.IsInt}}
+   {{else}}{{if $store.VersionInfo.IsInt}}
    {{.Name}}CacheStore.version = strconv.Itoa(schema.Stores[{{$index}}].Version.(int))
    {{else}}
    {{.Name}}CacheStore.versionFunc = schema.Stores[{{$index}}].Version.(func() string)
-   {{end}}
+   {{end}}{{end}}
 {{end}}
 }
 
 type Client struct {
      	{{range .Stores}}
-	{{ $NodeName := .Name | FirstLower  }}
+	{{$NodeName := .Name | FirstLower}}
 	{{.Name}}CacheStore *{{$NodeName}}Cache
 	{{end}}
 	redis cacheme.RedisClient
@@ -80,13 +80,13 @@ func (c *Client) NewPipeline() *cacheme.CachePipeline {
 
 }
 
-{{ $Prefix := .Prefix  }}
+{{$Prefix := .Prefix}}
 
 {{range .Stores}}
 
-{{ $NodeName := .Name | FirstLower  }}
+{{$NodeName := .Name | FirstLower}}
 type {{$NodeName}}Cache struct {
-     Fetch func(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error)
+     Fetch func(ctx context.Context, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error)
      tag string
      memo *cacheme.RedisMemoLock
      client *Client
@@ -103,7 +103,7 @@ type {{.Name}}Promise struct {
 	ctx          context.Context
 }
 
-func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {
+func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {
 	defer cp.Wg.Done()
 	var t {{.Type}}
 	memo := p.store.memo
@@ -128,7 +128,7 @@ func (p *{{.Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 		p.store.client.logger.Log(p.store.tag, key, Fetch)
 		value, err := p.store.Fetch(
 		p.ctx,
-		{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+		{{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 		if err != nil {
 			p.error = err
 			return
@@ -224,7 +224,7 @@ func (s *{{$NodeName}}Cache) Tag() string {
 	return s.tag
 }
 
-func (s *{{$NodeName}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) (*{{.Name}}Promise, error) {
+func (s *{{$NodeName}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) (*{{.Name}}Promise, error) {
      	param := &{{$NodeName}}Param{}
      	{{range .Vars}}
      	param.{{.}} = {{.}}
@@ -247,11 +247,11 @@ func (s *{{$NodeName}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
 	go promise.WaitExecute(
-	pp, key, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+	pp, key, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 	return promise, nil
 }
 
-func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
+func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
 
      param := &{{$NodeName}}Param{}
      {{range .Vars}}
@@ -268,11 +268,11 @@ func (s *{{$NodeName}}Cache) Get(ctx context.Context, {{ range $index, $element 
 
 	if {{.Singleflight}} {
 		data, err, _ := s.memo.SingleGroup().Do(key, func() (interface{}, error) {
-			return s.get(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+			return s.get(ctx, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 		})
 		return data.({{.Type}}), err
 	}
-	return s.get(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+	return s.get(ctx, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 }
 
 type {{$NodeName}}Param struct {
@@ -283,7 +283,7 @@ type {{$NodeName}}Param struct {
 
 func (p *{{$NodeName}}Param) pid() string {
 	var id string
-	{{ range $index, $element := .Vars}}
+	{{range $index, $element := .Vars}}
 	{{if $index}}
 	id = id + ":" + p.{{$element}}
 	{{else}}
@@ -303,7 +303,7 @@ type {{$NodeName}}QuerySet struct {
 	results map[string]{{.Type}}
 }
 
-func (q *{{$NodeName}}QuerySet) Get({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
+func (q *{{$NodeName}}QuerySet) Get({{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
 	param := {{$NodeName}}Param{
 	     {{range .Vars}}
      	     {{.}}: {{.}},
@@ -322,8 +322,8 @@ func (q *{{$NodeName}}QuerySet) GetSlice() []{{.Type}} {
 	return results
 }
 
-func (g *{{$NodeName}}MultiGetter) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$NodeName}}MultiGetter {
-	g.keys = append(g.keys, {{$NodeName}}Param{{"{"}}{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}"}})
+func (g *{{$NodeName}}MultiGetter) GetM({{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$NodeName}}MultiGetter {
+	g.keys = append(g.keys, {{$NodeName}}Param{{"{"}}{{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}"}})
 	return g
 }
 
@@ -357,7 +357,7 @@ func (g *{{$NodeName}}MultiGetter) pipeDo(ctx context.Context) (map[string]{{.Ty
 		if _, ok := ps[pid]; ok {
 			continue
 		}
-		promise, err := g.store.GetP(ctx, pipeline, {{ range $index, $element := .Vars}}{{if $index}},{{end}}k.{{.}}{{end}})
+		promise, err := g.store.GetP(ctx, pipeline, {{range $index, $element := .Vars}}{{if $index}},{{end}}k.{{.}}{{end}})
 		if err != nil {
 			return nil, err
 		}
@@ -380,15 +380,15 @@ func (g *{{$NodeName}}MultiGetter) pipeDo(ctx context.Context) (map[string]{{.Ty
 	return results, nil
 }
 
-func (s *{{$NodeName}}Cache) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$NodeName}}MultiGetter {
+func (s *{{$NodeName}}Cache) GetM({{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$NodeName}}MultiGetter {
 	return &{{$NodeName}}MultiGetter{
 		store: s,
-		keys:  []{{$NodeName}}Param{{"{{"}}{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}}"}},
+		keys:  []{{$NodeName}}Param{{"{{"}}{{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}}"}},
 	}
 }
 
 
-func (s *{{$NodeName}}Cache) get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
+func (s *{{$NodeName}}Cache) get(ctx context.Context, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
      param := &{{$NodeName}}Param{}
      {{range .Vars}}
      param.{{.}} = {{.}}
@@ -423,7 +423,7 @@ func (s *{{$NodeName}}Cache) get(ctx context.Context, {{ range $index, $element 
 
      if resourceLock {
      	s.client.logger.Log(s.tag, key, Fetch)
-	value, err := s.Fetch(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+	value, err := s.Fetch(ctx, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 	if err != nil {
 	   return value, err
 	}
@@ -444,7 +444,7 @@ func (s *{{$NodeName}}Cache) get(ctx context.Context, {{ range $index, $element 
      return t, err
 }
 
-func (s *{{$NodeName}}Cache) Update(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) error {
+func (s *{{$NodeName}}Cache) Update(ctx context.Context, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) error {
 
      param := &{{$NodeName}}Param{}
      {{range .Vars}}
@@ -456,7 +456,7 @@ func (s *{{$NodeName}}Cache) Update(ctx context.Context, {{ range $index, $eleme
      	return err
      }
      
-     value, err := s.Fetch(ctx, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
+     value, err := s.Fetch(ctx, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
      if err != nil {
      	return err
      }
@@ -468,7 +468,7 @@ func (s *{{$NodeName}}Cache) Update(ctx context.Context, {{ range $index, $eleme
     return err
 }
 
-func (s *{{$NodeName}}Cache) Invalid(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) error {
+func (s *{{$NodeName}}Cache) Invalid(ctx context.Context, {{range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) error {
 
      param := &{{$NodeName}}Param{}
      {{range .Vars}}

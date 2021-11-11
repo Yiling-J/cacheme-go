@@ -639,6 +639,16 @@ func getmTest(t *testing.T, client *cacheme.Client) {
 	require.NotNil(t, err)
 }
 
+func getmDuplicateTest(t *testing.T, client *cacheme.Client) {
+	ctx := context.TODO()
+	qs, err := client.SimpleMultiCacheStore.
+		GetM("a", "b", "c").
+		GetM("b", "c", "a").
+		GetM("a", "b", "c").Do(ctx)
+	require.Nil(t, err)
+	require.Equal(t, []string{"abc", "bca", "abc"}, qs.GetSlice())
+}
+
 func TestGetM(t *testing.T) {
 	fetcher.Setup()
 	client := Cacheme()
@@ -650,6 +660,13 @@ func TestGetM(t *testing.T) {
 	// cached
 	getmTest(t, client)
 	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	CleanRedis()
+	ResetCounter()
+	// duplicate test
+	getmDuplicateTest(t, client)
+	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
+	getmDuplicateTest(t, client)
+	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
 }
 
 func TestGetMCluster(t *testing.T) {
@@ -663,6 +680,13 @@ func TestGetMCluster(t *testing.T) {
 	// cached
 	getmTest(t, client)
 	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	CleanRedisCluster()
+	ResetCounter()
+	// duplicate test
+	getmDuplicateTest(t, client)
+	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
+	getmDuplicateTest(t, client)
+	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
 }
 
 func TestMGetSingleFlight(t *testing.T) {

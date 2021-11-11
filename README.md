@@ -7,7 +7,7 @@
 - **Statically Typed** - 100% statically typed using code generation.
 - **Scale Efficiently** - thundering herd protection via pub/sub.
 - **Cluster Support** - same API for redis & redis cluster.
-- **Memoize** - dynamic key generation based on code generation.
+- **Memoize** - dynamic key params based on code generation.
 - **Versioning** - cache versioning for better management.
 - **Pipeline** - reduce io cost by redis pipeline.
 
@@ -118,11 +118,13 @@ func main() {
 ```
 ### Store API
 #### Get single result: `Get`
+Get cached result. If not in cache, call fetch function and store data to Redis.
 ```go
 result, err := client.SimpleCacheStore.Get(ctx, "foo")
 ```
 #### Get pipeline results: `GetP`
-
+Get multiple keys from multiple stores using pipeline.
+For each key, if not in cache, call fetch function and store data to Redis.
 - single store
 ```go
 import cachemego "github.com/Yiling-J/cacheme-go"
@@ -177,6 +179,8 @@ for _, promise := range psf {
 
 ```
 #### Get multiple results from single store: `GetM`
+Get multiple keys from same store, also using Redis pipeline.
+For each key, if not in cache, call fetch function and store data to Redis.
 ```go
 qs, err := client.SimpleCacheStore.GetM("foo").GetM("bar").GetM("xyz").Do(ctx)
 // qs is a queryset struct, support two methods: GetSlice and Get
@@ -214,11 +218,20 @@ Each schema has 5 fields:
 	- map: `map[model.Foo]model.Bar{}`
 - **Version** - version interface, can be `string`, `int`, or callable `func() string`.
 - **TTL** - redis ttl using go time.
-- **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same executable** will call Redis only once 
+- **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same executable** will call Redis only once
 
 #### Notes:
 - Duplicate name/key is not allowed.
 - Everytime you update schema, run code generation again.
+- Not all store API support `Singleflight` option:
+	- `Get`: support.
+	- `GetM`: support. singleflight key will be the combination of all keys, order by alphabetical.
+	```go
+	// these two will use same singleflight group key
+	store.GetM("foo").GetM("bar").GetM("xyz").Do(ctx)
+	Store.GetM("bar").GetM("foo").GetM("xyz").Do(ctx)
+	```
+	- `GetP`: not support. 
 - `Version` callable can help you managing version better. Example:
 	```go
 	// models.go

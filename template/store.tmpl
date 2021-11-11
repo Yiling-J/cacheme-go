@@ -353,11 +353,15 @@ func (g *{{$NodeName}}MultiGetter) pipeDo(ctx context.Context) (map[string]{{.Ty
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*{{.Name}}Promise)
 	for _, k := range g.keys {
+	       	pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, {{ range $index, $element := .Vars}}{{if $index}},{{end}}k.{{.}}{{end}})
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)

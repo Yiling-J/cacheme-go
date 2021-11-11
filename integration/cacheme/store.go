@@ -423,11 +423,15 @@ func (g *fixMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) 
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FixPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -808,11 +812,15 @@ func (g *simpleMultiGetter) pipeDo(ctx context.Context) (map[string]string, erro
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*SimplePromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -1219,11 +1227,15 @@ func (g *simpleMultiMultiGetter) pipeDo(ctx context.Context) (map[string]string,
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*SimpleMultiPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.Foo, k.Bar, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -1622,11 +1634,15 @@ func (g *fooMapMultiGetter) pipeDo(ctx context.Context) (map[string]map[string]s
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooMapPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -2013,11 +2029,15 @@ func (g *fooMultiGetter) pipeDo(ctx context.Context) (map[string]model.Foo, erro
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -2404,11 +2424,15 @@ func (g *barMultiGetter) pipeDo(ctx context.Context) (map[string]model.Bar, erro
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*BarPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -2795,11 +2819,15 @@ func (g *fooPMultiGetter) pipeDo(ctx context.Context) (map[string]*model.Foo, er
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooPPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -3186,11 +3214,15 @@ func (g *fooListMultiGetter) pipeDo(ctx context.Context) (map[string][]model.Foo
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooListPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -3577,11 +3609,15 @@ func (g *fooListPMultiGetter) pipeDo(ctx context.Context) (map[string][]*model.F
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooListPPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -3968,11 +4004,15 @@ func (g *fooMapSMultiGetter) pipeDo(ctx context.Context) (map[string]map[model.F
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooMapSPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)
@@ -4359,11 +4399,15 @@ func (g *simpleFlightMultiGetter) pipeDo(ctx context.Context) (map[string]string
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*SimpleFlightPromise)
 	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
 		promise, err := g.store.GetP(ctx, pipeline, k.ID)
 		if err != nil {
 			return nil, err
 		}
-		ps[k.pid()] = promise
+		ps[pid] = promise
 	}
 
 	err := pipeline.Execute(ctx)

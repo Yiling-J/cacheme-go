@@ -96,7 +96,7 @@ func CleanRedisCluster() {
 
 }
 
-func RestCounter() {
+func ResetCounter() {
 	fetcher.FixCacheStoreCounter = 0
 	fetcher.FooCacheStoreCounter = 0
 	fetcher.FooListCacheStoreCounter = 0
@@ -105,6 +105,7 @@ func RestCounter() {
 	fetcher.FooPCacheStoreCounter = 0
 	fetcher.SimpleCacheStoreCounter = 0
 	fetcher.SimpleFlightCacheStoreCounter = 0
+	fetcher.SimpleMultiCacheStoreCounter = 0
 }
 
 func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
@@ -152,7 +153,7 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			defer cleanFunc()
-			RestCounter()
+			defer ResetCounter()
 			ctx := context.Background()
 
 			stores := []cachemeo.CacheStore{
@@ -422,6 +423,7 @@ func TestCluster(t *testing.T) {
 
 func CacheConcurrencyTestCase(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 	defer cleanFunc()
+	defer ResetCounter()
 
 	var mu sync.Mutex
 
@@ -443,7 +445,7 @@ func CacheConcurrencyTestCase(t *testing.T, client *cacheme.Client, cleanFunc fu
 		return ID + fetcher.Tester, nil
 	}
 
-	RestCounter()
+	ResetCounter()
 	var wg sync.WaitGroup
 	ctx := context.Background()
 
@@ -491,6 +493,7 @@ func TestCacheKey(t *testing.T) {
 	fetcher.Setup()
 	client := Cacheme()
 	defer CleanRedis()
+	defer ResetCounter()
 	ctx := context.TODO()
 
 	_, err := client.SimpleCacheStore.Get(ctx, "foo")
@@ -531,6 +534,7 @@ func TestSingleFlightCocurrency(t *testing.T) {
 	fetcher.Setup()
 	client := Cacheme()
 	defer CleanRedis()
+	defer ResetCounter()
 	ctx := context.TODO()
 	logger := &CounterLogger{}
 	logger.Init()
@@ -552,14 +556,14 @@ func TestSingleFlightCocurrency(t *testing.T) {
 	wg.Wait()
 	hit, ok := logger.counter["SimpleFlight>simple:flight:foo:v1>HIT"]
 	require.True(t, ok)
-	fmt.Println(hit)
-	require.True(t, hit < 50)
+	require.True(t, hit < 20)
 }
 
 func TestCacheVersion(t *testing.T) {
 	fetcher.Setup()
 	client := Cacheme()
 	defer CleanRedis()
+	defer ResetCounter()
 	ctx := context.TODO()
 
 	_, err := client.BarCacheStore.Get(ctx, "foo")
@@ -591,6 +595,7 @@ func TestMultiParams(t *testing.T) {
 	fetcher.Setup()
 	client := Cacheme()
 	defer CleanRedis()
+	defer ResetCounter()
 	ctx := context.TODO()
 
 	for i := 1; i <= 30; i++ {
@@ -609,4 +614,130 @@ func TestMultiParams(t *testing.T) {
 			require.Equal(t, "bca", r)
 		}
 	}
+}
+
+func getmTest(t *testing.T, client *cacheme.Client) {
+	ctx := context.TODO()
+
+	qs, err := client.SimpleMultiCacheStore.
+		GetM("a", "b", "c").
+		GetM("b", "c", "a").
+		GetM("c", "a", "b").Do(ctx)
+	require.Nil(t, err)
+	require.Equal(t, qs.GetSlice(), []string{"abc", "bca", "cab"})
+	v, err := qs.Get("a", "b", "c")
+	require.Nil(t, err)
+	require.Equal(t, "abc", v)
+	v, err = qs.Get("b", "c", "a")
+	require.Nil(t, err)
+	require.Equal(t, "bca", v)
+	v, err = qs.Get("c", "a", "b")
+	require.Nil(t, err)
+	require.Equal(t, "cab", v)
+	// not exist
+	_, err = qs.Get("b", "b", "c")
+	require.NotNil(t, err)
+}
+
+func getmDuplicateTest(t *testing.T, client *cacheme.Client) {
+	ctx := context.TODO()
+	qs, err := client.SimpleMultiCacheStore.
+		GetM("a", "b", "c").
+		GetM("b", "c", "a").
+		GetM("a", "b", "c").Do(ctx)
+	require.Nil(t, err)
+	require.Equal(t, []string{"abc", "bca", "abc"}, qs.GetSlice())
+}
+
+func TestGetM(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	defer ResetCounter()
+	// no cache
+	getmTest(t, client)
+	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	// cached
+	getmTest(t, client)
+	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	CleanRedis()
+	ResetCounter()
+	// duplicate test
+	getmDuplicateTest(t, client)
+	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
+	getmDuplicateTest(t, client)
+	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
+}
+
+func TestGetMCluster(t *testing.T) {
+	fetcher.Setup()
+	client := CachemeCluster()
+	defer CleanRedisCluster()
+	defer ResetCounter()
+	// no cache
+	getmTest(t, client)
+	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	// cached
+	getmTest(t, client)
+	require.Equal(t, 3, fetcher.SimpleMultiCacheStoreCounter)
+	CleanRedisCluster()
+	ResetCounter()
+	// duplicate test
+	getmDuplicateTest(t, client)
+	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
+	getmDuplicateTest(t, client)
+	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
+}
+
+func TestMGetSingleFlight(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	defer ResetCounter()
+	ctx := context.TODO()
+	logger := &CounterLogger{}
+	logger.Init()
+	client.SetLogger(logger)
+
+	_, err := client.SimpleFlightCacheStore.GetM("foo").GetM("bar").GetM("x").GetM("y").Do(ctx)
+	require.Nil(t, err)
+
+	// all of these should use same singleflight group key
+	keys := [][]string{
+		{"foo", "bar", "x", "y"},
+		{"bar", "foo", "x", "y"},
+		{"bar", "x", "y", "foo"},
+		{"bar", "y", "x", "foo"},
+		{"y", "bar", "foo", "x"},
+	}
+
+	var wg sync.WaitGroup
+	for i := 1; i <= 400; i++ {
+		wg.Add(1)
+		go func(c int) {
+			defer wg.Done()
+			k := keys[c%5]
+			r, err := client.SimpleFlightCacheStore.
+				GetM(k[0]).
+				GetM(k[1]).
+				GetM(k[2]).
+				GetM(k[3]).
+				Do(ctx)
+			require.Nil(t, err)
+			require.Equal(t, k, r.GetSlice())
+		}(i)
+	}
+	wg.Wait()
+	hit, ok := logger.counter["SimpleFlight>simple:flight:foo:v1>HIT"]
+	require.True(t, ok)
+	require.True(t, hit < 10)
+	hit, ok = logger.counter["SimpleFlight>simple:flight:bar:v1>HIT"]
+	require.True(t, ok)
+	require.True(t, hit < 10)
+	hit, ok = logger.counter["SimpleFlight>simple:flight:x:v1>HIT"]
+	require.True(t, ok)
+	require.True(t, hit < 10)
+	hit, ok = logger.counter["SimpleFlight>simple:flight:y:v1>HIT"]
+	require.True(t, ok)
+	require.True(t, hit < 10)
 }

@@ -7,7 +7,7 @@
 - **Statically Typed** - 100% statically typed using code generation.
 - **Scale Efficiently** - thundering herd protection via pub/sub.
 - **Cluster Support** - same API for redis & redis cluster.
-- **Memoize** - dynamic key generation based on code generation.
+- **Memoize** - dynamic key params based on code generation.
 - **Versioning** - cache versioning for better management.
 - **Pipeline** - reduce io cost by redis pipeline.
 
@@ -86,16 +86,18 @@ func Setup() {
 ```
 
 ## Use Your Stores
-Create a client and get data, fetch function will be called if cache not exist:
+
+### Create client and setup fetcher
 ```go
 import (
 	"your_project/cacheme"
 	"your_project/cacheme/fetcher"
 )
 
-func example() (string, error) {
-	ctx := context.TODO()
+func main() {
+	// setup fetcher
 	fetcher.Setup()
+	// create client
 	client := cacheme.New(
 		redis.NewClient(&redis.Options{
 			Addr:     "localhost:6379",
@@ -103,25 +105,7 @@ func example() (string, error) {
 			DB:       0,
 		}),
 	)
-	store := client.SimpleCacheStore
-	result, err := store.Get(ctx, "foo")
-	if err != nil {
-		return "", err
-	}
-	return result, err
-}
-```
-
-Redis Cluster:
-```go
-import (
-	"your_project/cacheme"
-	"your_project/cacheme/fetcher"
-)
-
-func example() (string, error) {
-	ctx := context.TODO()
-	fetcher.Setup()
+	// or cluster client
 	client := cacheme.NewCluster(
 		redis.NewClusterClient(&redis.ClusterOptions{
 			Addrs: []string{
@@ -130,27 +114,21 @@ func example() (string, error) {
 				":7002"},
 		}),
 	)
-	store := client.SimpleCacheStore
-	result, err := store.Get(ctx, "foo")
-	if err != nil {
-		return "", err
-	}
-	return result, err
 }
 ```
-Invalid your cache:
+### Store API
+#### Get single result: `Get`
+Get cached result. If not in cache, call fetch function and store data to Redis.
 ```go
-err := store.Invalid(ctx, "foo")
+result, err := client.SimpleCacheStore.Get(ctx, "foo")
 ```
-Update your cache:
-```go
-err := store.Update(ctx, "foo")
-```
-Redis pipeline(using same client, skip client creation here):
+#### Get pipeline results: `GetP`
+Get multiple keys from multiple stores using pipeline.
+For each key, if not in cache, call fetch function and store data to Redis.
+- single store
 ```go
 import cachemego "github.com/Yiling-J/cacheme-go"
 
-...
 pipeline := cachemego.NewPipeline(client.Redis())
 ids := []string{"1", "2", "3", "4"}
 var ps []*cacheme.SimplePromise
@@ -166,11 +144,12 @@ for _, promise := range ps {
 	fmt.Println(r, err)
 }
 ```
-Mixed pipeline:
+Consider using `GetM` API for single store, see `GetM` example below.
+
+- multiple stores
 ```go
 import cachemego "github.com/Yiling-J/cacheme-go"
 
-...
 // same pipeline for different stores
 pipeline := cachemego.NewPipeline(client.Redis())
 
@@ -187,7 +166,6 @@ for _, i := range ids {
 }
 // execute only once
 err = pipeline.Execute(ctx)
-fmt.Println(err)
 // simple store results
 for _, promise := range ps {
 	r, err := promise.Result()
@@ -198,8 +176,30 @@ for _, promise := range psf {
 	r, err := promise.Result()
 	fmt.Println(r, err)
 }
+
 ```
-Invalid all cache with version:
+#### Get multiple results from single store: `GetM`
+Get multiple keys from same store, also using Redis pipeline.
+For each key, if not in cache, call fetch function and store data to Redis.
+```go
+qs, err := client.SimpleCacheStore.GetM("foo").GetM("bar").GetM("xyz").Do(ctx)
+// qs is a queryset struct, support two methods: GetSlice and Get
+// GetSlice return ordered results slice
+r, err := qs.GetSlice() // r: {foo_result, bar_result, xyz_result}
+// Get return result of given param
+r, err := qs.Get("foo") // r: foo_result
+r, err := qs.Get("bar") // r: bar_result
+r, err := qs.Get("fake") // error, because "fake" not in queryset
+```
+#### Invalid single cache: `Invalid`
+```go
+err := client.SimpleCacheStore.Invalid(ctx, "foo")
+```
+#### Update single cache: `Update`
+```go
+err := client.SimpleCacheStore.Update(ctx, "foo")
+```
+#### Invalid all keys: `InvalidAll`
 ```go
 // invalid all version 1 simple cache
 client.SimpleCacheStore.InvalidAll(ctx, "1")
@@ -218,11 +218,20 @@ Each schema has 5 fields:
 	- map: `map[model.Foo]model.Bar{}`
 - **Version** - version interface, can be `string`, `int`, or callable `func() string`.
 - **TTL** - redis ttl using go time.
-- **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same executable** will call Redis only once 
+- **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same executable** will call Redis only once
 
 #### Notes:
 - Duplicate name/key is not allowed.
 - Everytime you update schema, run code generation again.
+- Not all store API support `Singleflight` option:
+	- `Get`: support.
+	- `GetM`: support. singleflight key will be the combination of all keys, order by alphabetical.
+	```go
+	// these two will use same singleflight group key
+	store.GetM("foo").GetM("bar").GetM("xyz").Do(ctx)
+	Store.GetM("bar").GetM("foo").GetM("xyz").Do(ctx)
+	```
+	- `GetP`: not support. 
 - `Version` callable can help you managing version better. Example:
 	```go
 	// models.go

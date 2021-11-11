@@ -19,6 +19,7 @@ var (
 	FooListCacheStoreCounter      int
 	FooListPCacheStoreCounter     int
 	SimpleFlightCacheStoreCounter int
+	SimpleMultiCacheStoreCounter  int
 
 	mu sync.Mutex
 )
@@ -47,6 +48,9 @@ func Setup() {
 	}
 
 	cacheme.SimpleMultiCacheStore.Fetch = func(ctx context.Context, Foo, Bar, ID string) (string, error) {
+		mu.Lock()
+		SimpleMultiCacheStoreCounter++
+		mu.Unlock()
 		return Foo + Bar + ID, nil
 	}
 

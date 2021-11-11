@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -276,11 +278,11 @@ func (s *fixCache) KeyTemplate() string {
 	return "fix" + ":v" + s.Version()
 }
 
-func (s *fixCache) Key(m map[string]string) (string, error) {
+func (s *fixCache) Key(p *fixParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -311,9 +313,9 @@ func (s *fixCache) Tag() string {
 }
 
 func (s *fixCache) GetP(ctx context.Context, pp *cacheme.CachePipeline) (*FixPromise, error) {
-	params := make(map[string]string)
+	param := &fixParam{}
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -336,11 +338,11 @@ func (s *fixCache) GetP(ctx context.Context, pp *cacheme.CachePipeline) (*FixPro
 
 func (s *fixCache) Get(ctx context.Context) (string, error) {
 
-	params := make(map[string]string)
+	param := &fixParam{}
 
 	var t string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -354,12 +356,113 @@ func (s *fixCache) Get(ctx context.Context) (string, error) {
 	return s.get(ctx)
 }
 
+type fixParam struct {
+}
+
+func (p *fixParam) pid() string {
+	var id string
+
+	return id
+}
+
+type fixMultiGetter struct {
+	store *fixCache
+	keys  []fixParam
+}
+
+type fixQuerySet struct {
+	keys    []string
+	results map[string]string
+}
+
+func (q *fixQuerySet) Get() (string, error) {
+	param := fixParam{}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *fixQuerySet) GetSlice() []string {
+	var results []string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *fixMultiGetter) GetM() *fixMultiGetter {
+	g.keys = append(g.keys, fixParam{})
+	return g
+}
+
+func (g *fixMultiGetter) Do(ctx context.Context) (*fixQuerySet, error) {
+	qs := &fixQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]string)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *fixMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*FixPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]string)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *fixCache) GetM() *fixMultiGetter {
+	return &fixMultiGetter{
+		store: s,
+		keys:  []fixParam{{}},
+	}
+}
+
 func (s *fixCache) get(ctx context.Context) (string, error) {
-	params := make(map[string]string)
+	param := &fixParam{}
 
 	var t string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -409,9 +512,9 @@ func (s *fixCache) get(ctx context.Context) (string, error) {
 
 func (s *fixCache) Update(ctx context.Context) error {
 
-	params := make(map[string]string)
+	param := &fixParam{}
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -430,9 +533,9 @@ func (s *fixCache) Update(ctx context.Context) error {
 
 func (s *fixCache) Invalid(ctx context.Context) error {
 
-	params := make(map[string]string)
+	param := &fixParam{}
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -554,11 +657,11 @@ func (s *simpleCache) KeyTemplate() string {
 	return "simple:{{.ID}}" + ":v" + s.Version()
 }
 
-func (s *simpleCache) Key(m map[string]string) (string, error) {
+func (s *simpleCache) Key(p *simpleParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -589,11 +692,11 @@ func (s *simpleCache) Tag() string {
 }
 
 func (s *simpleCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*SimplePromise, error) {
-	params := make(map[string]string)
+	param := &simpleParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -616,13 +719,13 @@ func (s *simpleCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 
 func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 
-	params := make(map[string]string)
+	param := &simpleParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -636,14 +739,121 @@ func (s *simpleCache) Get(ctx context.Context, ID string) (string, error) {
 	return s.get(ctx, ID)
 }
 
-func (s *simpleCache) get(ctx context.Context, ID string) (string, error) {
-	params := make(map[string]string)
+type simpleParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *simpleParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type simpleMultiGetter struct {
+	store *simpleCache
+	keys  []simpleParam
+}
+
+type simpleQuerySet struct {
+	keys    []string
+	results map[string]string
+}
+
+func (q *simpleQuerySet) Get(ID string) (string, error) {
+	param := simpleParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *simpleQuerySet) GetSlice() []string {
+	var results []string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *simpleMultiGetter) GetM(ID string) *simpleMultiGetter {
+	g.keys = append(g.keys, simpleParam{ID: ID})
+	return g
+}
+
+func (g *simpleMultiGetter) Do(ctx context.Context) (*simpleQuerySet, error) {
+	qs := &simpleQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]string)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *simpleMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*SimplePromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]string)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *simpleCache) GetM(ID string) *simpleMultiGetter {
+	return &simpleMultiGetter{
+		store: s,
+		keys:  []simpleParam{{ID: ID}},
+	}
+}
+
+func (s *simpleCache) get(ctx context.Context, ID string) (string, error) {
+	param := &simpleParam{}
+
+	param.ID = ID
 
 	var t string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -693,11 +903,11 @@ func (s *simpleCache) get(ctx context.Context, ID string) (string, error) {
 
 func (s *simpleCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &simpleParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -716,11 +926,11 @@ func (s *simpleCache) Update(ctx context.Context, ID string) error {
 
 func (s *simpleCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &simpleParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -842,11 +1052,11 @@ func (s *simpleMultiCache) KeyTemplate() string {
 	return "simplem:{{.Foo}}:{{.Bar}}:{{.ID}}" + ":v" + s.Version()
 }
 
-func (s *simpleMultiCache) Key(m map[string]string) (string, error) {
+func (s *simpleMultiCache) Key(p *simpleMultiParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -877,15 +1087,15 @@ func (s *simpleMultiCache) Tag() string {
 }
 
 func (s *simpleMultiCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, Foo string, Bar string, ID string) (*SimpleMultiPromise, error) {
-	params := make(map[string]string)
+	param := &simpleMultiParam{}
 
-	params["Foo"] = Foo
+	param.Foo = Foo
 
-	params["Bar"] = Bar
+	param.Bar = Bar
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -908,17 +1118,17 @@ func (s *simpleMultiCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, 
 
 func (s *simpleMultiCache) Get(ctx context.Context, Foo string, Bar string, ID string) (string, error) {
 
-	params := make(map[string]string)
+	param := &simpleMultiParam{}
 
-	params["Foo"] = Foo
+	param.Foo = Foo
 
-	params["Bar"] = Bar
+	param.Bar = Bar
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -932,18 +1142,137 @@ func (s *simpleMultiCache) Get(ctx context.Context, Foo string, Bar string, ID s
 	return s.get(ctx, Foo, Bar, ID)
 }
 
+type simpleMultiParam struct {
+	Foo string
+
+	Bar string
+
+	ID string
+}
+
+func (p *simpleMultiParam) pid() string {
+	var id string
+
+	id = id + p.Foo
+
+	id = id + ":" + p.Bar
+
+	id = id + ":" + p.ID
+
+	return id
+}
+
+type simpleMultiMultiGetter struct {
+	store *simpleMultiCache
+	keys  []simpleMultiParam
+}
+
+type simpleMultiQuerySet struct {
+	keys    []string
+	results map[string]string
+}
+
+func (q *simpleMultiQuerySet) Get(Foo string, Bar string, ID string) (string, error) {
+	param := simpleMultiParam{
+
+		Foo: Foo,
+
+		Bar: Bar,
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *simpleMultiQuerySet) GetSlice() []string {
+	var results []string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *simpleMultiMultiGetter) GetM(Foo string, Bar string, ID string) *simpleMultiMultiGetter {
+	g.keys = append(g.keys, simpleMultiParam{Foo: Foo, Bar: Bar, ID: ID})
+	return g
+}
+
+func (g *simpleMultiMultiGetter) Do(ctx context.Context) (*simpleMultiQuerySet, error) {
+	qs := &simpleMultiQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]string)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *simpleMultiMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*SimpleMultiPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.Foo, k.Bar, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]string)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *simpleMultiCache) GetM(Foo string, Bar string, ID string) *simpleMultiMultiGetter {
+	return &simpleMultiMultiGetter{
+		store: s,
+		keys:  []simpleMultiParam{{Foo: Foo, Bar: Bar, ID: ID}},
+	}
+}
+
 func (s *simpleMultiCache) get(ctx context.Context, Foo string, Bar string, ID string) (string, error) {
-	params := make(map[string]string)
+	param := &simpleMultiParam{}
 
-	params["Foo"] = Foo
+	param.Foo = Foo
 
-	params["Bar"] = Bar
+	param.Bar = Bar
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -993,15 +1322,15 @@ func (s *simpleMultiCache) get(ctx context.Context, Foo string, Bar string, ID s
 
 func (s *simpleMultiCache) Update(ctx context.Context, Foo string, Bar string, ID string) error {
 
-	params := make(map[string]string)
+	param := &simpleMultiParam{}
 
-	params["Foo"] = Foo
+	param.Foo = Foo
 
-	params["Bar"] = Bar
+	param.Bar = Bar
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -1020,15 +1349,15 @@ func (s *simpleMultiCache) Update(ctx context.Context, Foo string, Bar string, I
 
 func (s *simpleMultiCache) Invalid(ctx context.Context, Foo string, Bar string, ID string) error {
 
-	params := make(map[string]string)
+	param := &simpleMultiParam{}
 
-	params["Foo"] = Foo
+	param.Foo = Foo
 
-	params["Bar"] = Bar
+	param.Bar = Bar
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -1150,11 +1479,11 @@ func (s *fooMapCache) KeyTemplate() string {
 	return "foomap:{{.ID}}" + ":v" + s.Version()
 }
 
-func (s *fooMapCache) Key(m map[string]string) (string, error) {
+func (s *fooMapCache) Key(p *fooMapParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -1185,11 +1514,11 @@ func (s *fooMapCache) Tag() string {
 }
 
 func (s *fooMapCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooMapPromise, error) {
-	params := make(map[string]string)
+	param := &fooMapParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -1212,13 +1541,13 @@ func (s *fooMapCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 
 func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, error) {
 
-	params := make(map[string]string)
+	param := &fooMapParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t map[string]string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -1232,14 +1561,121 @@ func (s *fooMapCache) Get(ctx context.Context, ID string) (map[string]string, er
 	return s.get(ctx, ID)
 }
 
-func (s *fooMapCache) get(ctx context.Context, ID string) (map[string]string, error) {
-	params := make(map[string]string)
+type fooMapParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *fooMapParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type fooMapMultiGetter struct {
+	store *fooMapCache
+	keys  []fooMapParam
+}
+
+type fooMapQuerySet struct {
+	keys    []string
+	results map[string]map[string]string
+}
+
+func (q *fooMapQuerySet) Get(ID string) (map[string]string, error) {
+	param := fooMapParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *fooMapQuerySet) GetSlice() []map[string]string {
+	var results []map[string]string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *fooMapMultiGetter) GetM(ID string) *fooMapMultiGetter {
+	g.keys = append(g.keys, fooMapParam{ID: ID})
+	return g
+}
+
+func (g *fooMapMultiGetter) Do(ctx context.Context) (*fooMapQuerySet, error) {
+	qs := &fooMapQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]map[string]string)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *fooMapMultiGetter) pipeDo(ctx context.Context) (map[string]map[string]string, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*FooMapPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]map[string]string)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *fooMapCache) GetM(ID string) *fooMapMultiGetter {
+	return &fooMapMultiGetter{
+		store: s,
+		keys:  []fooMapParam{{ID: ID}},
+	}
+}
+
+func (s *fooMapCache) get(ctx context.Context, ID string) (map[string]string, error) {
+	param := &fooMapParam{}
+
+	param.ID = ID
 
 	var t map[string]string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -1289,11 +1725,11 @@ func (s *fooMapCache) get(ctx context.Context, ID string) (map[string]string, er
 
 func (s *fooMapCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooMapParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -1312,11 +1748,11 @@ func (s *fooMapCache) Update(ctx context.Context, ID string) error {
 
 func (s *fooMapCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooMapParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -1438,11 +1874,11 @@ func (s *fooCache) KeyTemplate() string {
 	return "foo:{{.ID}}:info" + ":v" + s.Version()
 }
 
-func (s *fooCache) Key(m map[string]string) (string, error) {
+func (s *fooCache) Key(p *fooParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -1473,11 +1909,11 @@ func (s *fooCache) Tag() string {
 }
 
 func (s *fooCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooPromise, error) {
-	params := make(map[string]string)
+	param := &fooParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -1500,13 +1936,13 @@ func (s *fooCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID strin
 
 func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 
-	params := make(map[string]string)
+	param := &fooParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t model.Foo
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -1520,14 +1956,121 @@ func (s *fooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 	return s.get(ctx, ID)
 }
 
-func (s *fooCache) get(ctx context.Context, ID string) (model.Foo, error) {
-	params := make(map[string]string)
+type fooParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *fooParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type fooMultiGetter struct {
+	store *fooCache
+	keys  []fooParam
+}
+
+type fooQuerySet struct {
+	keys    []string
+	results map[string]model.Foo
+}
+
+func (q *fooQuerySet) Get(ID string) (model.Foo, error) {
+	param := fooParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *fooQuerySet) GetSlice() []model.Foo {
+	var results []model.Foo
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *fooMultiGetter) GetM(ID string) *fooMultiGetter {
+	g.keys = append(g.keys, fooParam{ID: ID})
+	return g
+}
+
+func (g *fooMultiGetter) Do(ctx context.Context) (*fooQuerySet, error) {
+	qs := &fooQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]model.Foo)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *fooMultiGetter) pipeDo(ctx context.Context) (map[string]model.Foo, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*FooPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]model.Foo)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *fooCache) GetM(ID string) *fooMultiGetter {
+	return &fooMultiGetter{
+		store: s,
+		keys:  []fooParam{{ID: ID}},
+	}
+}
+
+func (s *fooCache) get(ctx context.Context, ID string) (model.Foo, error) {
+	param := &fooParam{}
+
+	param.ID = ID
 
 	var t model.Foo
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -1577,11 +2120,11 @@ func (s *fooCache) get(ctx context.Context, ID string) (model.Foo, error) {
 
 func (s *fooCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -1600,11 +2143,11 @@ func (s *fooCache) Update(ctx context.Context, ID string) error {
 
 func (s *fooCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -1726,11 +2269,11 @@ func (s *barCache) KeyTemplate() string {
 	return "bar:{{.ID}}:info" + ":v" + s.Version()
 }
 
-func (s *barCache) Key(m map[string]string) (string, error) {
+func (s *barCache) Key(p *barParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -1761,11 +2304,11 @@ func (s *barCache) Tag() string {
 }
 
 func (s *barCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*BarPromise, error) {
-	params := make(map[string]string)
+	param := &barParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -1788,13 +2331,13 @@ func (s *barCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID strin
 
 func (s *barCache) Get(ctx context.Context, ID string) (model.Bar, error) {
 
-	params := make(map[string]string)
+	param := &barParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t model.Bar
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -1808,14 +2351,121 @@ func (s *barCache) Get(ctx context.Context, ID string) (model.Bar, error) {
 	return s.get(ctx, ID)
 }
 
-func (s *barCache) get(ctx context.Context, ID string) (model.Bar, error) {
-	params := make(map[string]string)
+type barParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *barParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type barMultiGetter struct {
+	store *barCache
+	keys  []barParam
+}
+
+type barQuerySet struct {
+	keys    []string
+	results map[string]model.Bar
+}
+
+func (q *barQuerySet) Get(ID string) (model.Bar, error) {
+	param := barParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *barQuerySet) GetSlice() []model.Bar {
+	var results []model.Bar
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *barMultiGetter) GetM(ID string) *barMultiGetter {
+	g.keys = append(g.keys, barParam{ID: ID})
+	return g
+}
+
+func (g *barMultiGetter) Do(ctx context.Context) (*barQuerySet, error) {
+	qs := &barQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]model.Bar)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *barMultiGetter) pipeDo(ctx context.Context) (map[string]model.Bar, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*BarPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]model.Bar)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *barCache) GetM(ID string) *barMultiGetter {
+	return &barMultiGetter{
+		store: s,
+		keys:  []barParam{{ID: ID}},
+	}
+}
+
+func (s *barCache) get(ctx context.Context, ID string) (model.Bar, error) {
+	param := &barParam{}
+
+	param.ID = ID
 
 	var t model.Bar
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -1865,11 +2515,11 @@ func (s *barCache) get(ctx context.Context, ID string) (model.Bar, error) {
 
 func (s *barCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &barParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -1888,11 +2538,11 @@ func (s *barCache) Update(ctx context.Context, ID string) error {
 
 func (s *barCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &barParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -2014,11 +2664,11 @@ func (s *fooPCache) KeyTemplate() string {
 	return "foop:{{.ID}}:info" + ":v" + s.Version()
 }
 
-func (s *fooPCache) Key(m map[string]string) (string, error) {
+func (s *fooPCache) Key(p *fooPParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -2049,11 +2699,11 @@ func (s *fooPCache) Tag() string {
 }
 
 func (s *fooPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooPPromise, error) {
-	params := make(map[string]string)
+	param := &fooPParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -2076,13 +2726,13 @@ func (s *fooPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID stri
 
 func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 
-	params := make(map[string]string)
+	param := &fooPParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t *model.Foo
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -2096,14 +2746,121 @@ func (s *fooPCache) Get(ctx context.Context, ID string) (*model.Foo, error) {
 	return s.get(ctx, ID)
 }
 
-func (s *fooPCache) get(ctx context.Context, ID string) (*model.Foo, error) {
-	params := make(map[string]string)
+type fooPParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *fooPParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type fooPMultiGetter struct {
+	store *fooPCache
+	keys  []fooPParam
+}
+
+type fooPQuerySet struct {
+	keys    []string
+	results map[string]*model.Foo
+}
+
+func (q *fooPQuerySet) Get(ID string) (*model.Foo, error) {
+	param := fooPParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *fooPQuerySet) GetSlice() []*model.Foo {
+	var results []*model.Foo
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *fooPMultiGetter) GetM(ID string) *fooPMultiGetter {
+	g.keys = append(g.keys, fooPParam{ID: ID})
+	return g
+}
+
+func (g *fooPMultiGetter) Do(ctx context.Context) (*fooPQuerySet, error) {
+	qs := &fooPQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]*model.Foo)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *fooPMultiGetter) pipeDo(ctx context.Context) (map[string]*model.Foo, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*FooPPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]*model.Foo)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *fooPCache) GetM(ID string) *fooPMultiGetter {
+	return &fooPMultiGetter{
+		store: s,
+		keys:  []fooPParam{{ID: ID}},
+	}
+}
+
+func (s *fooPCache) get(ctx context.Context, ID string) (*model.Foo, error) {
+	param := &fooPParam{}
+
+	param.ID = ID
 
 	var t *model.Foo
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -2153,11 +2910,11 @@ func (s *fooPCache) get(ctx context.Context, ID string) (*model.Foo, error) {
 
 func (s *fooPCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooPParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -2176,11 +2933,11 @@ func (s *fooPCache) Update(ctx context.Context, ID string) error {
 
 func (s *fooPCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooPParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -2302,11 +3059,11 @@ func (s *fooListCache) KeyTemplate() string {
 	return "foo:list:{{.ID}}" + ":v" + s.Version()
 }
 
-func (s *fooListCache) Key(m map[string]string) (string, error) {
+func (s *fooListCache) Key(p *fooListParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -2337,11 +3094,11 @@ func (s *fooListCache) Tag() string {
 }
 
 func (s *fooListCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooListPromise, error) {
-	params := make(map[string]string)
+	param := &fooListParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -2364,13 +3121,13 @@ func (s *fooListCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID s
 
 func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) {
 
-	params := make(map[string]string)
+	param := &fooListParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t []model.Foo
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -2384,14 +3141,121 @@ func (s *fooListCache) Get(ctx context.Context, ID string) ([]model.Foo, error) 
 	return s.get(ctx, ID)
 }
 
-func (s *fooListCache) get(ctx context.Context, ID string) ([]model.Foo, error) {
-	params := make(map[string]string)
+type fooListParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *fooListParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type fooListMultiGetter struct {
+	store *fooListCache
+	keys  []fooListParam
+}
+
+type fooListQuerySet struct {
+	keys    []string
+	results map[string][]model.Foo
+}
+
+func (q *fooListQuerySet) Get(ID string) ([]model.Foo, error) {
+	param := fooListParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *fooListQuerySet) GetSlice() [][]model.Foo {
+	var results [][]model.Foo
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *fooListMultiGetter) GetM(ID string) *fooListMultiGetter {
+	g.keys = append(g.keys, fooListParam{ID: ID})
+	return g
+}
+
+func (g *fooListMultiGetter) Do(ctx context.Context) (*fooListQuerySet, error) {
+	qs := &fooListQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string][]model.Foo)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *fooListMultiGetter) pipeDo(ctx context.Context) (map[string][]model.Foo, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*FooListPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string][]model.Foo)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *fooListCache) GetM(ID string) *fooListMultiGetter {
+	return &fooListMultiGetter{
+		store: s,
+		keys:  []fooListParam{{ID: ID}},
+	}
+}
+
+func (s *fooListCache) get(ctx context.Context, ID string) ([]model.Foo, error) {
+	param := &fooListParam{}
+
+	param.ID = ID
 
 	var t []model.Foo
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -2441,11 +3305,11 @@ func (s *fooListCache) get(ctx context.Context, ID string) ([]model.Foo, error) 
 
 func (s *fooListCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooListParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -2464,11 +3328,11 @@ func (s *fooListCache) Update(ctx context.Context, ID string) error {
 
 func (s *fooListCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooListParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -2590,11 +3454,11 @@ func (s *fooListPCache) KeyTemplate() string {
 	return "foo:listp:{{.ID}}" + ":v" + s.Version()
 }
 
-func (s *fooListPCache) Key(m map[string]string) (string, error) {
+func (s *fooListPCache) Key(p *fooListPParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -2625,11 +3489,11 @@ func (s *fooListPCache) Tag() string {
 }
 
 func (s *fooListPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooListPPromise, error) {
-	params := make(map[string]string)
+	param := &fooListPParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -2652,13 +3516,13 @@ func (s *fooListPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID 
 
 func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error) {
 
-	params := make(map[string]string)
+	param := &fooListPParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t []*model.Foo
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -2672,14 +3536,121 @@ func (s *fooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error
 	return s.get(ctx, ID)
 }
 
-func (s *fooListPCache) get(ctx context.Context, ID string) ([]*model.Foo, error) {
-	params := make(map[string]string)
+type fooListPParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *fooListPParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type fooListPMultiGetter struct {
+	store *fooListPCache
+	keys  []fooListPParam
+}
+
+type fooListPQuerySet struct {
+	keys    []string
+	results map[string][]*model.Foo
+}
+
+func (q *fooListPQuerySet) Get(ID string) ([]*model.Foo, error) {
+	param := fooListPParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *fooListPQuerySet) GetSlice() [][]*model.Foo {
+	var results [][]*model.Foo
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *fooListPMultiGetter) GetM(ID string) *fooListPMultiGetter {
+	g.keys = append(g.keys, fooListPParam{ID: ID})
+	return g
+}
+
+func (g *fooListPMultiGetter) Do(ctx context.Context) (*fooListPQuerySet, error) {
+	qs := &fooListPQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string][]*model.Foo)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *fooListPMultiGetter) pipeDo(ctx context.Context) (map[string][]*model.Foo, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*FooListPPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string][]*model.Foo)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *fooListPCache) GetM(ID string) *fooListPMultiGetter {
+	return &fooListPMultiGetter{
+		store: s,
+		keys:  []fooListPParam{{ID: ID}},
+	}
+}
+
+func (s *fooListPCache) get(ctx context.Context, ID string) ([]*model.Foo, error) {
+	param := &fooListPParam{}
+
+	param.ID = ID
 
 	var t []*model.Foo
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -2729,11 +3700,11 @@ func (s *fooListPCache) get(ctx context.Context, ID string) ([]*model.Foo, error
 
 func (s *fooListPCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooListPParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -2752,11 +3723,11 @@ func (s *fooListPCache) Update(ctx context.Context, ID string) error {
 
 func (s *fooListPCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooListPParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -2878,11 +3849,11 @@ func (s *fooMapSCache) KeyTemplate() string {
 	return "foo:maps:{{.ID}}" + ":v" + s.Version()
 }
 
-func (s *fooMapSCache) Key(m map[string]string) (string, error) {
+func (s *fooMapSCache) Key(p *fooMapSParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -2913,11 +3884,11 @@ func (s *fooMapSCache) Tag() string {
 }
 
 func (s *fooMapSCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooMapSPromise, error) {
-	params := make(map[string]string)
+	param := &fooMapSParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -2940,13 +3911,13 @@ func (s *fooMapSCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID s
 
 func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.Bar, error) {
 
-	params := make(map[string]string)
+	param := &fooMapSParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t map[model.Foo]model.Bar
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -2960,14 +3931,121 @@ func (s *fooMapSCache) Get(ctx context.Context, ID string) (map[model.Foo]model.
 	return s.get(ctx, ID)
 }
 
-func (s *fooMapSCache) get(ctx context.Context, ID string) (map[model.Foo]model.Bar, error) {
-	params := make(map[string]string)
+type fooMapSParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *fooMapSParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type fooMapSMultiGetter struct {
+	store *fooMapSCache
+	keys  []fooMapSParam
+}
+
+type fooMapSQuerySet struct {
+	keys    []string
+	results map[string]map[model.Foo]model.Bar
+}
+
+func (q *fooMapSQuerySet) Get(ID string) (map[model.Foo]model.Bar, error) {
+	param := fooMapSParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *fooMapSQuerySet) GetSlice() []map[model.Foo]model.Bar {
+	var results []map[model.Foo]model.Bar
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *fooMapSMultiGetter) GetM(ID string) *fooMapSMultiGetter {
+	g.keys = append(g.keys, fooMapSParam{ID: ID})
+	return g
+}
+
+func (g *fooMapSMultiGetter) Do(ctx context.Context) (*fooMapSQuerySet, error) {
+	qs := &fooMapSQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if false {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]map[model.Foo]model.Bar)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *fooMapSMultiGetter) pipeDo(ctx context.Context) (map[string]map[model.Foo]model.Bar, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*FooMapSPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]map[model.Foo]model.Bar)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *fooMapSCache) GetM(ID string) *fooMapSMultiGetter {
+	return &fooMapSMultiGetter{
+		store: s,
+		keys:  []fooMapSParam{{ID: ID}},
+	}
+}
+
+func (s *fooMapSCache) get(ctx context.Context, ID string) (map[model.Foo]model.Bar, error) {
+	param := &fooMapSParam{}
+
+	param.ID = ID
 
 	var t map[model.Foo]model.Bar
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -3017,11 +4095,11 @@ func (s *fooMapSCache) get(ctx context.Context, ID string) (map[model.Foo]model.
 
 func (s *fooMapSCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooMapSParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -3040,11 +4118,11 @@ func (s *fooMapSCache) Update(ctx context.Context, ID string) error {
 
 func (s *fooMapSCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &fooMapSParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -3166,11 +4244,11 @@ func (s *simpleFlightCache) KeyTemplate() string {
 	return "simple:flight:{{.ID}}" + ":v" + s.Version()
 }
 
-func (s *simpleFlightCache) Key(m map[string]string) (string, error) {
+func (s *simpleFlightCache) Key(p *simpleFlightParam) (string, error) {
 	t := template.Must(template.New("").Parse(s.KeyTemplate()))
 	t = t.Option("missingkey=zero")
 	var tpl bytes.Buffer
-	err := t.Execute(&tpl, m)
+	err := t.Execute(&tpl, p)
 	return tpl.String(), err
 }
 
@@ -3201,11 +4279,11 @@ func (s *simpleFlightCache) Tag() string {
 }
 
 func (s *simpleFlightCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*SimpleFlightPromise, error) {
-	params := make(map[string]string)
+	param := &simpleFlightParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return nil, err
 	}
@@ -3228,13 +4306,13 @@ func (s *simpleFlightCache) GetP(ctx context.Context, pp *cacheme.CachePipeline,
 
 func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) {
 
-	params := make(map[string]string)
+	param := &simpleFlightParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
 	var t string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -3248,14 +4326,121 @@ func (s *simpleFlightCache) Get(ctx context.Context, ID string) (string, error) 
 	return s.get(ctx, ID)
 }
 
-func (s *simpleFlightCache) get(ctx context.Context, ID string) (string, error) {
-	params := make(map[string]string)
+type simpleFlightParam struct {
+	ID string
+}
 
-	params["ID"] = ID
+func (p *simpleFlightParam) pid() string {
+	var id string
+
+	id = id + p.ID
+
+	return id
+}
+
+type simpleFlightMultiGetter struct {
+	store *simpleFlightCache
+	keys  []simpleFlightParam
+}
+
+type simpleFlightQuerySet struct {
+	keys    []string
+	results map[string]string
+}
+
+func (q *simpleFlightQuerySet) Get(ID string) (string, error) {
+	param := simpleFlightParam{
+
+		ID: ID,
+	}
+	v, ok := q.results[param.pid()]
+	if !ok {
+		return v, errors.New("not found")
+	}
+	return v, nil
+}
+
+func (q *simpleFlightQuerySet) GetSlice() []string {
+	var results []string
+	for _, k := range q.keys {
+		results = append(results, q.results[k])
+	}
+	return results
+}
+
+func (g *simpleFlightMultiGetter) GetM(ID string) *simpleFlightMultiGetter {
+	g.keys = append(g.keys, simpleFlightParam{ID: ID})
+	return g
+}
+
+func (g *simpleFlightMultiGetter) Do(ctx context.Context) (*simpleFlightQuerySet, error) {
+	qs := &simpleFlightQuerySet{}
+	var keys []string
+	for _, k := range g.keys {
+		pid := k.pid()
+		qs.keys = append(qs.keys, pid)
+		keys = append(keys, pid)
+	}
+	if true {
+		sort.Strings(keys)
+		group := strings.Join(keys, ":")
+		data, err, _ := g.store.memo.SingleGroup().Do(group, func() (interface{}, error) {
+			return g.pipeDo(ctx)
+		})
+		qs.results = data.(map[string]string)
+		return qs, err
+	}
+	data, err := g.pipeDo(ctx)
+	qs.results = data
+	return qs, err
+}
+
+func (g *simpleFlightMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
+	pipeline := cacheme.NewPipeline(g.store.client.Redis())
+	ps := make(map[string]*SimpleFlightPromise)
+	for _, k := range g.keys {
+		pid := k.pid()
+		if _, ok := ps[pid]; ok {
+			continue
+		}
+		promise, err := g.store.GetP(ctx, pipeline, k.ID)
+		if err != nil {
+			return nil, err
+		}
+		ps[pid] = promise
+	}
+
+	err := pipeline.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string]string)
+	for k, p := range ps {
+		r, err := p.Result()
+		if err != nil {
+			return nil, err
+		}
+		results[k] = r
+	}
+	return results, nil
+}
+
+func (s *simpleFlightCache) GetM(ID string) *simpleFlightMultiGetter {
+	return &simpleFlightMultiGetter{
+		store: s,
+		keys:  []simpleFlightParam{{ID: ID}},
+	}
+}
+
+func (s *simpleFlightCache) get(ctx context.Context, ID string) (string, error) {
+	param := &simpleFlightParam{}
+
+	param.ID = ID
 
 	var t string
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return t, err
 	}
@@ -3305,11 +4490,11 @@ func (s *simpleFlightCache) get(ctx context.Context, ID string) (string, error) 
 
 func (s *simpleFlightCache) Update(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &simpleFlightParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}
@@ -3328,11 +4513,11 @@ func (s *simpleFlightCache) Update(ctx context.Context, ID string) error {
 
 func (s *simpleFlightCache) Invalid(ctx context.Context, ID string) error {
 
-	params := make(map[string]string)
+	param := &simpleFlightParam{}
 
-	params["ID"] = ID
+	param.ID = ID
 
-	key, err := s.Key(params)
+	key, err := s.Key(param)
 	if err != nil {
 		return err
 	}

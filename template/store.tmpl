@@ -322,6 +322,13 @@ func (q *{{$NodeName}}QuerySet) GetSlice() []{{.Type}} {
 	return results
 }
 
+func (s *{{$NodeName}}Cache) MGetter() *{{$NodeName}}MultiGetter {
+	return &{{$NodeName}}MultiGetter{
+		store: s,
+		keys:  []{{$NodeName}}Param{},
+	}
+}
+
 func (g *{{$NodeName}}MultiGetter) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$NodeName}}MultiGetter {
 	g.keys = append(g.keys, {{$NodeName}}Param{{"{"}}{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}"}})
 	return g

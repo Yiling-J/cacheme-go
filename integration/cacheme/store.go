@@ -392,6 +392,13 @@ func (q *fixQuerySet) GetSlice() []string {
 	return results
 }
 
+func (s *fixCache) MGetter() *fixMultiGetter {
+	return &fixMultiGetter{
+		store: s,
+		keys:  []fixParam{},
+	}
+}
+
 func (g *fixMultiGetter) GetM() *fixMultiGetter {
 	g.keys = append(g.keys, fixParam{})
 	return g
@@ -779,6 +786,13 @@ func (q *simpleQuerySet) GetSlice() []string {
 		results = append(results, q.results[k])
 	}
 	return results
+}
+
+func (s *simpleCache) MGetter() *simpleMultiGetter {
+	return &simpleMultiGetter{
+		store: s,
+		keys:  []simpleParam{},
+	}
 }
 
 func (g *simpleMultiGetter) GetM(ID string) *simpleMultiGetter {
@@ -1196,6 +1210,13 @@ func (q *simpleMultiQuerySet) GetSlice() []string {
 	return results
 }
 
+func (s *simpleMultiCache) MGetter() *simpleMultiMultiGetter {
+	return &simpleMultiMultiGetter{
+		store: s,
+		keys:  []simpleMultiParam{},
+	}
+}
+
 func (g *simpleMultiMultiGetter) GetM(Foo string, Bar string, ID string) *simpleMultiMultiGetter {
 	g.keys = append(g.keys, simpleMultiParam{Foo: Foo, Bar: Bar, ID: ID})
 	return g
@@ -1603,6 +1624,13 @@ func (q *fooMapQuerySet) GetSlice() []map[string]string {
 	return results
 }
 
+func (s *fooMapCache) MGetter() *fooMapMultiGetter {
+	return &fooMapMultiGetter{
+		store: s,
+		keys:  []fooMapParam{},
+	}
+}
+
 func (g *fooMapMultiGetter) GetM(ID string) *fooMapMultiGetter {
 	g.keys = append(g.keys, fooMapParam{ID: ID})
 	return g
@@ -1996,6 +2024,13 @@ func (q *fooQuerySet) GetSlice() []model.Foo {
 		results = append(results, q.results[k])
 	}
 	return results
+}
+
+func (s *fooCache) MGetter() *fooMultiGetter {
+	return &fooMultiGetter{
+		store: s,
+		keys:  []fooParam{},
+	}
 }
 
 func (g *fooMultiGetter) GetM(ID string) *fooMultiGetter {
@@ -2393,6 +2428,13 @@ func (q *barQuerySet) GetSlice() []model.Bar {
 	return results
 }
 
+func (s *barCache) MGetter() *barMultiGetter {
+	return &barMultiGetter{
+		store: s,
+		keys:  []barParam{},
+	}
+}
+
 func (g *barMultiGetter) GetM(ID string) *barMultiGetter {
 	g.keys = append(g.keys, barParam{ID: ID})
 	return g
@@ -2786,6 +2828,13 @@ func (q *fooPQuerySet) GetSlice() []*model.Foo {
 		results = append(results, q.results[k])
 	}
 	return results
+}
+
+func (s *fooPCache) MGetter() *fooPMultiGetter {
+	return &fooPMultiGetter{
+		store: s,
+		keys:  []fooPParam{},
+	}
 }
 
 func (g *fooPMultiGetter) GetM(ID string) *fooPMultiGetter {
@@ -3183,6 +3232,13 @@ func (q *fooListQuerySet) GetSlice() [][]model.Foo {
 	return results
 }
 
+func (s *fooListCache) MGetter() *fooListMultiGetter {
+	return &fooListMultiGetter{
+		store: s,
+		keys:  []fooListParam{},
+	}
+}
+
 func (g *fooListMultiGetter) GetM(ID string) *fooListMultiGetter {
 	g.keys = append(g.keys, fooListParam{ID: ID})
 	return g
@@ -3576,6 +3632,13 @@ func (q *fooListPQuerySet) GetSlice() [][]*model.Foo {
 		results = append(results, q.results[k])
 	}
 	return results
+}
+
+func (s *fooListPCache) MGetter() *fooListPMultiGetter {
+	return &fooListPMultiGetter{
+		store: s,
+		keys:  []fooListPParam{},
+	}
 }
 
 func (g *fooListPMultiGetter) GetM(ID string) *fooListPMultiGetter {
@@ -3973,6 +4036,13 @@ func (q *fooMapSQuerySet) GetSlice() []map[model.Foo]model.Bar {
 	return results
 }
 
+func (s *fooMapSCache) MGetter() *fooMapSMultiGetter {
+	return &fooMapSMultiGetter{
+		store: s,
+		keys:  []fooMapSParam{},
+	}
+}
+
 func (g *fooMapSMultiGetter) GetM(ID string) *fooMapSMultiGetter {
 	g.keys = append(g.keys, fooMapSParam{ID: ID})
 	return g
@@ -4366,6 +4436,13 @@ func (q *simpleFlightQuerySet) GetSlice() []string {
 		results = append(results, q.results[k])
 	}
 	return results
+}
+
+func (s *simpleFlightCache) MGetter() *simpleFlightMultiGetter {
+	return &simpleFlightMultiGetter{
+		store: s,
+		keys:  []simpleFlightParam{},
+	}
 }
 
 func (g *simpleFlightMultiGetter) GetM(ID string) *simpleFlightMultiGetter {

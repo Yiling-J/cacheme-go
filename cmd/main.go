@@ -213,7 +213,7 @@ func generateCmd() *cobra.Command {
 			}
 			defer os.RemoveAll("cacheme/.gen")
 
-			_, err = tidy()
+			_, err = get("github.com/Yiling-J/cacheme-go")
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)

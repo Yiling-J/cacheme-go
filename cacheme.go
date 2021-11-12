@@ -176,6 +176,9 @@ func SchemaToStore(schemaPath string, prefix string, stores []*StoreSchema, save
 		if err != nil {
 			return err
 		}
+		if version.IsInt() {
+			importMap["strconv"] = ""
+		}
 
 		if n, ok := nameMapping[s.Name]; ok {
 			fmt.Println("find duplicate name", n)

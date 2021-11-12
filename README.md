@@ -191,6 +191,14 @@ r, err := qs.Get("foo") // r: foo_result
 r, err := qs.Get("bar") // r: bar_result
 r, err := qs.Get("fake") // error, because "fake" not in queryset
 ```
+You can also initialize a getter using `MGetter`
+```go
+getter := client.SimpleCacheStore.MGetter()
+for _, id := range ids {
+	getter.GetM(id)
+}
+qs, err := getter.Do(c.Request().Context())
+```
 #### Invalid single cache: `Invalid`
 ```go
 err := client.SimpleCacheStore.Invalid(ctx, "foo")

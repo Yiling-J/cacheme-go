@@ -4,14 +4,24 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-- **Statically Typed** - 100% statically typed using code generation.
+- **Statically Typed** - 100% statically typed using code generation. Drop-in replacement, no reflect/type-assertion.
 - **Scale Efficiently** - thundering herd protection via pub/sub.
 - **Cluster Support** - same API for redis & redis cluster.
 - **Memoize** - dynamic key params based on code generation.
 - **Versioning** - cache versioning for better management.
 - **Pipeline** - reduce io cost by redis pipeline.
 
-Read this first: [Caches, Promises and Locks](https://redis.com/blog/caches-promises-locks/). This is how caching part works in cacheme.
+🌀 Read this first: [Caches, Promises and Locks](https://redis.com/blog/caches-promises-locks/). This is how caching part works in cacheme.
+
+🌀 Real world example with [Echo](https://github.com/labstack/echo) and [Ent](https://github.com/ent/ent): https://github.com/Yiling-J/echo-ent-cacheme-example
+```go
+// old
+id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+comment, err := ent.Comment.Get(context.Background(), int(id))
+
+// new
+comment, err := cacheme.CommentCacheStore.Get(c.Request().Context(), c.Param("id"))
+```
 
 ## Installation
 ```console

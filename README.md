@@ -130,6 +130,7 @@ func main() {
 #### Get single result: `Get`
 Get cached result. If not in cache, call fetch function and store data to Redis.
 ```go
+// "foo" is the {{.ID}} part of the schema
 result, err := client.SimpleCacheStore.Get(ctx, "foo")
 ```
 #### Get pipeline results: `GetP`

@@ -273,7 +273,7 @@ Each schema has 5 fields:
 	```
 - If set `Singleflight` to `true`, Cacheme `Get` command will be wrapped in a [**singleflight**](https://pkg.go.dev/golang.org/x/sync/singleflight), so **concurrent requests to same key** will call `Redis` only once. Let's use some example to explain this:
 	- you have some products to sell, and thousands people will view the detail at same time, so the product key `product:1:info` may be hit 100000 times per second. Now you should turn on **singleflight**, and the actually redis hit may reduce to 5000.
-	- you have cache for user shopping cart `user:123:cart`, only the user himself can see that. Now no need to use **singleflight**, becauese there should't be concurrent requests to that key.
+	- you have cache for user shopping cart `user:123:cart`, only the user himself can see that. Now no need to use **singleflight**, becauese there shouldn't be concurrent requests to that key.
 	- you are using serverless platform, AWS Lambda or similar. So each request runs in isolated environment, can't talk to each other through channels. Then **singleflight** make no sense.
 - Full redis key has 3 parts: **prefix** + **schema key** + **version**.
 	Schema Key`category:{{.categoryID}}:book:{{.bookID}}` with prefix `cacheme`, version 1 will generate key:

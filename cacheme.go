@@ -198,6 +198,7 @@ func SchemaToStore(schemaPath string, prefix string, stores []*StoreSchema, save
 			vars = append(vars, v[1])
 		}
 		s.SetVars(vars)
+		s.Name = strings.Title(s.Name)
 
 		t := reflect.TypeOf(s.To)
 		path := pkgPath(t)

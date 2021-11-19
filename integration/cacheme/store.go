@@ -16,9 +16,9 @@ import (
 
 	"github.com/Yiling-J/cacheme-go/integration/cacheme/schema"
 
-	"github.com/Yiling-J/cacheme-go/integration/model"
-
 	"strconv"
+
+	"github.com/Yiling-J/cacheme-go/integration/model"
 )
 
 const (
@@ -366,7 +366,7 @@ func (p *fixParam) pid() string {
 	return id
 }
 
-type fixMultiGetter struct {
+type FixMultiGetter struct {
 	store *fixCache
 	keys  []fixParam
 }
@@ -393,19 +393,19 @@ func (q *fixQuerySet) GetSlice() []string {
 	return results
 }
 
-func (s *fixCache) MGetter() *fixMultiGetter {
-	return &fixMultiGetter{
+func (s *fixCache) MGetter() *FixMultiGetter {
+	return &FixMultiGetter{
 		store: s,
 		keys:  []fixParam{},
 	}
 }
 
-func (g *fixMultiGetter) GetM() *fixMultiGetter {
+func (g *FixMultiGetter) GetM() *FixMultiGetter {
 	g.keys = append(g.keys, fixParam{})
 	return g
 }
 
-func (g *fixMultiGetter) Do(ctx context.Context) (*fixQuerySet, error) {
+func (g *FixMultiGetter) Do(ctx context.Context) (*fixQuerySet, error) {
 	qs := &fixQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -427,7 +427,7 @@ func (g *fixMultiGetter) Do(ctx context.Context) (*fixQuerySet, error) {
 	return qs, err
 }
 
-func (g *fixMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
+func (g *FixMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FixPromise)
 	for _, k := range g.keys {
@@ -458,8 +458,8 @@ func (g *fixMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) 
 	return results, nil
 }
 
-func (s *fixCache) GetM() *fixMultiGetter {
-	return &fixMultiGetter{
+func (s *fixCache) GetM() *FixMultiGetter {
+	return &FixMultiGetter{
 		store: s,
 		keys:  []fixParam{{}},
 	}
@@ -759,7 +759,7 @@ func (p *simpleParam) pid() string {
 	return id
 }
 
-type simpleMultiGetter struct {
+type SimpleMultiGetter struct {
 	store *simpleCache
 	keys  []simpleParam
 }
@@ -789,19 +789,19 @@ func (q *simpleQuerySet) GetSlice() []string {
 	return results
 }
 
-func (s *simpleCache) MGetter() *simpleMultiGetter {
-	return &simpleMultiGetter{
+func (s *simpleCache) MGetter() *SimpleMultiGetter {
+	return &SimpleMultiGetter{
 		store: s,
 		keys:  []simpleParam{},
 	}
 }
 
-func (g *simpleMultiGetter) GetM(ID string) *simpleMultiGetter {
+func (g *SimpleMultiGetter) GetM(ID string) *SimpleMultiGetter {
 	g.keys = append(g.keys, simpleParam{ID: ID})
 	return g
 }
 
-func (g *simpleMultiGetter) Do(ctx context.Context) (*simpleQuerySet, error) {
+func (g *SimpleMultiGetter) Do(ctx context.Context) (*simpleQuerySet, error) {
 	qs := &simpleQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -823,7 +823,7 @@ func (g *simpleMultiGetter) Do(ctx context.Context) (*simpleQuerySet, error) {
 	return qs, err
 }
 
-func (g *simpleMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
+func (g *SimpleMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*SimplePromise)
 	for _, k := range g.keys {
@@ -854,8 +854,8 @@ func (g *simpleMultiGetter) pipeDo(ctx context.Context) (map[string]string, erro
 	return results, nil
 }
 
-func (s *simpleCache) GetM(ID string) *simpleMultiGetter {
-	return &simpleMultiGetter{
+func (s *simpleCache) GetM(ID string) *SimpleMultiGetter {
+	return &SimpleMultiGetter{
 		store: s,
 		keys:  []simpleParam{{ID: ID}},
 	}
@@ -1177,7 +1177,7 @@ func (p *simpleMultiParam) pid() string {
 	return id
 }
 
-type simpleMultiMultiGetter struct {
+type SimpleMultiMultiGetter struct {
 	store *simpleMultiCache
 	keys  []simpleMultiParam
 }
@@ -1211,19 +1211,19 @@ func (q *simpleMultiQuerySet) GetSlice() []string {
 	return results
 }
 
-func (s *simpleMultiCache) MGetter() *simpleMultiMultiGetter {
-	return &simpleMultiMultiGetter{
+func (s *simpleMultiCache) MGetter() *SimpleMultiMultiGetter {
+	return &SimpleMultiMultiGetter{
 		store: s,
 		keys:  []simpleMultiParam{},
 	}
 }
 
-func (g *simpleMultiMultiGetter) GetM(Foo string, Bar string, ID string) *simpleMultiMultiGetter {
+func (g *SimpleMultiMultiGetter) GetM(Foo string, Bar string, ID string) *SimpleMultiMultiGetter {
 	g.keys = append(g.keys, simpleMultiParam{Foo: Foo, Bar: Bar, ID: ID})
 	return g
 }
 
-func (g *simpleMultiMultiGetter) Do(ctx context.Context) (*simpleMultiQuerySet, error) {
+func (g *SimpleMultiMultiGetter) Do(ctx context.Context) (*simpleMultiQuerySet, error) {
 	qs := &simpleMultiQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -1245,7 +1245,7 @@ func (g *simpleMultiMultiGetter) Do(ctx context.Context) (*simpleMultiQuerySet, 
 	return qs, err
 }
 
-func (g *simpleMultiMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
+func (g *SimpleMultiMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*SimpleMultiPromise)
 	for _, k := range g.keys {
@@ -1276,8 +1276,8 @@ func (g *simpleMultiMultiGetter) pipeDo(ctx context.Context) (map[string]string,
 	return results, nil
 }
 
-func (s *simpleMultiCache) GetM(Foo string, Bar string, ID string) *simpleMultiMultiGetter {
-	return &simpleMultiMultiGetter{
+func (s *simpleMultiCache) GetM(Foo string, Bar string, ID string) *SimpleMultiMultiGetter {
+	return &SimpleMultiMultiGetter{
 		store: s,
 		keys:  []simpleMultiParam{{Foo: Foo, Bar: Bar, ID: ID}},
 	}
@@ -1595,7 +1595,7 @@ func (p *fooMapParam) pid() string {
 	return id
 }
 
-type fooMapMultiGetter struct {
+type FooMapMultiGetter struct {
 	store *fooMapCache
 	keys  []fooMapParam
 }
@@ -1625,19 +1625,19 @@ func (q *fooMapQuerySet) GetSlice() []map[string]string {
 	return results
 }
 
-func (s *fooMapCache) MGetter() *fooMapMultiGetter {
-	return &fooMapMultiGetter{
+func (s *fooMapCache) MGetter() *FooMapMultiGetter {
+	return &FooMapMultiGetter{
 		store: s,
 		keys:  []fooMapParam{},
 	}
 }
 
-func (g *fooMapMultiGetter) GetM(ID string) *fooMapMultiGetter {
+func (g *FooMapMultiGetter) GetM(ID string) *FooMapMultiGetter {
 	g.keys = append(g.keys, fooMapParam{ID: ID})
 	return g
 }
 
-func (g *fooMapMultiGetter) Do(ctx context.Context) (*fooMapQuerySet, error) {
+func (g *FooMapMultiGetter) Do(ctx context.Context) (*fooMapQuerySet, error) {
 	qs := &fooMapQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -1659,7 +1659,7 @@ func (g *fooMapMultiGetter) Do(ctx context.Context) (*fooMapQuerySet, error) {
 	return qs, err
 }
 
-func (g *fooMapMultiGetter) pipeDo(ctx context.Context) (map[string]map[string]string, error) {
+func (g *FooMapMultiGetter) pipeDo(ctx context.Context) (map[string]map[string]string, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooMapPromise)
 	for _, k := range g.keys {
@@ -1690,8 +1690,8 @@ func (g *fooMapMultiGetter) pipeDo(ctx context.Context) (map[string]map[string]s
 	return results, nil
 }
 
-func (s *fooMapCache) GetM(ID string) *fooMapMultiGetter {
-	return &fooMapMultiGetter{
+func (s *fooMapCache) GetM(ID string) *FooMapMultiGetter {
+	return &FooMapMultiGetter{
 		store: s,
 		keys:  []fooMapParam{{ID: ID}},
 	}
@@ -1997,7 +1997,7 @@ func (p *fooParam) pid() string {
 	return id
 }
 
-type fooMultiGetter struct {
+type FooMultiGetter struct {
 	store *fooCache
 	keys  []fooParam
 }
@@ -2027,19 +2027,19 @@ func (q *fooQuerySet) GetSlice() []model.Foo {
 	return results
 }
 
-func (s *fooCache) MGetter() *fooMultiGetter {
-	return &fooMultiGetter{
+func (s *fooCache) MGetter() *FooMultiGetter {
+	return &FooMultiGetter{
 		store: s,
 		keys:  []fooParam{},
 	}
 }
 
-func (g *fooMultiGetter) GetM(ID string) *fooMultiGetter {
+func (g *FooMultiGetter) GetM(ID string) *FooMultiGetter {
 	g.keys = append(g.keys, fooParam{ID: ID})
 	return g
 }
 
-func (g *fooMultiGetter) Do(ctx context.Context) (*fooQuerySet, error) {
+func (g *FooMultiGetter) Do(ctx context.Context) (*fooQuerySet, error) {
 	qs := &fooQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -2061,7 +2061,7 @@ func (g *fooMultiGetter) Do(ctx context.Context) (*fooQuerySet, error) {
 	return qs, err
 }
 
-func (g *fooMultiGetter) pipeDo(ctx context.Context) (map[string]model.Foo, error) {
+func (g *FooMultiGetter) pipeDo(ctx context.Context) (map[string]model.Foo, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooPromise)
 	for _, k := range g.keys {
@@ -2092,8 +2092,8 @@ func (g *fooMultiGetter) pipeDo(ctx context.Context) (map[string]model.Foo, erro
 	return results, nil
 }
 
-func (s *fooCache) GetM(ID string) *fooMultiGetter {
-	return &fooMultiGetter{
+func (s *fooCache) GetM(ID string) *FooMultiGetter {
+	return &FooMultiGetter{
 		store: s,
 		keys:  []fooParam{{ID: ID}},
 	}
@@ -2399,7 +2399,7 @@ func (p *barParam) pid() string {
 	return id
 }
 
-type barMultiGetter struct {
+type BarMultiGetter struct {
 	store *barCache
 	keys  []barParam
 }
@@ -2429,19 +2429,19 @@ func (q *barQuerySet) GetSlice() []model.Bar {
 	return results
 }
 
-func (s *barCache) MGetter() *barMultiGetter {
-	return &barMultiGetter{
+func (s *barCache) MGetter() *BarMultiGetter {
+	return &BarMultiGetter{
 		store: s,
 		keys:  []barParam{},
 	}
 }
 
-func (g *barMultiGetter) GetM(ID string) *barMultiGetter {
+func (g *BarMultiGetter) GetM(ID string) *BarMultiGetter {
 	g.keys = append(g.keys, barParam{ID: ID})
 	return g
 }
 
-func (g *barMultiGetter) Do(ctx context.Context) (*barQuerySet, error) {
+func (g *BarMultiGetter) Do(ctx context.Context) (*barQuerySet, error) {
 	qs := &barQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -2463,7 +2463,7 @@ func (g *barMultiGetter) Do(ctx context.Context) (*barQuerySet, error) {
 	return qs, err
 }
 
-func (g *barMultiGetter) pipeDo(ctx context.Context) (map[string]model.Bar, error) {
+func (g *BarMultiGetter) pipeDo(ctx context.Context) (map[string]model.Bar, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*BarPromise)
 	for _, k := range g.keys {
@@ -2494,8 +2494,8 @@ func (g *barMultiGetter) pipeDo(ctx context.Context) (map[string]model.Bar, erro
 	return results, nil
 }
 
-func (s *barCache) GetM(ID string) *barMultiGetter {
-	return &barMultiGetter{
+func (s *barCache) GetM(ID string) *BarMultiGetter {
+	return &BarMultiGetter{
 		store: s,
 		keys:  []barParam{{ID: ID}},
 	}
@@ -2801,7 +2801,7 @@ func (p *fooPParam) pid() string {
 	return id
 }
 
-type fooPMultiGetter struct {
+type FooPMultiGetter struct {
 	store *fooPCache
 	keys  []fooPParam
 }
@@ -2831,19 +2831,19 @@ func (q *fooPQuerySet) GetSlice() []*model.Foo {
 	return results
 }
 
-func (s *fooPCache) MGetter() *fooPMultiGetter {
-	return &fooPMultiGetter{
+func (s *fooPCache) MGetter() *FooPMultiGetter {
+	return &FooPMultiGetter{
 		store: s,
 		keys:  []fooPParam{},
 	}
 }
 
-func (g *fooPMultiGetter) GetM(ID string) *fooPMultiGetter {
+func (g *FooPMultiGetter) GetM(ID string) *FooPMultiGetter {
 	g.keys = append(g.keys, fooPParam{ID: ID})
 	return g
 }
 
-func (g *fooPMultiGetter) Do(ctx context.Context) (*fooPQuerySet, error) {
+func (g *FooPMultiGetter) Do(ctx context.Context) (*fooPQuerySet, error) {
 	qs := &fooPQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -2865,7 +2865,7 @@ func (g *fooPMultiGetter) Do(ctx context.Context) (*fooPQuerySet, error) {
 	return qs, err
 }
 
-func (g *fooPMultiGetter) pipeDo(ctx context.Context) (map[string]*model.Foo, error) {
+func (g *FooPMultiGetter) pipeDo(ctx context.Context) (map[string]*model.Foo, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooPPromise)
 	for _, k := range g.keys {
@@ -2896,8 +2896,8 @@ func (g *fooPMultiGetter) pipeDo(ctx context.Context) (map[string]*model.Foo, er
 	return results, nil
 }
 
-func (s *fooPCache) GetM(ID string) *fooPMultiGetter {
-	return &fooPMultiGetter{
+func (s *fooPCache) GetM(ID string) *FooPMultiGetter {
+	return &FooPMultiGetter{
 		store: s,
 		keys:  []fooPParam{{ID: ID}},
 	}
@@ -3203,7 +3203,7 @@ func (p *fooListParam) pid() string {
 	return id
 }
 
-type fooListMultiGetter struct {
+type FooListMultiGetter struct {
 	store *fooListCache
 	keys  []fooListParam
 }
@@ -3233,19 +3233,19 @@ func (q *fooListQuerySet) GetSlice() [][]model.Foo {
 	return results
 }
 
-func (s *fooListCache) MGetter() *fooListMultiGetter {
-	return &fooListMultiGetter{
+func (s *fooListCache) MGetter() *FooListMultiGetter {
+	return &FooListMultiGetter{
 		store: s,
 		keys:  []fooListParam{},
 	}
 }
 
-func (g *fooListMultiGetter) GetM(ID string) *fooListMultiGetter {
+func (g *FooListMultiGetter) GetM(ID string) *FooListMultiGetter {
 	g.keys = append(g.keys, fooListParam{ID: ID})
 	return g
 }
 
-func (g *fooListMultiGetter) Do(ctx context.Context) (*fooListQuerySet, error) {
+func (g *FooListMultiGetter) Do(ctx context.Context) (*fooListQuerySet, error) {
 	qs := &fooListQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -3267,7 +3267,7 @@ func (g *fooListMultiGetter) Do(ctx context.Context) (*fooListQuerySet, error) {
 	return qs, err
 }
 
-func (g *fooListMultiGetter) pipeDo(ctx context.Context) (map[string][]model.Foo, error) {
+func (g *FooListMultiGetter) pipeDo(ctx context.Context) (map[string][]model.Foo, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooListPromise)
 	for _, k := range g.keys {
@@ -3298,8 +3298,8 @@ func (g *fooListMultiGetter) pipeDo(ctx context.Context) (map[string][]model.Foo
 	return results, nil
 }
 
-func (s *fooListCache) GetM(ID string) *fooListMultiGetter {
-	return &fooListMultiGetter{
+func (s *fooListCache) GetM(ID string) *FooListMultiGetter {
+	return &FooListMultiGetter{
 		store: s,
 		keys:  []fooListParam{{ID: ID}},
 	}
@@ -3605,7 +3605,7 @@ func (p *fooListPParam) pid() string {
 	return id
 }
 
-type fooListPMultiGetter struct {
+type FooListPMultiGetter struct {
 	store *fooListPCache
 	keys  []fooListPParam
 }
@@ -3635,19 +3635,19 @@ func (q *fooListPQuerySet) GetSlice() [][]*model.Foo {
 	return results
 }
 
-func (s *fooListPCache) MGetter() *fooListPMultiGetter {
-	return &fooListPMultiGetter{
+func (s *fooListPCache) MGetter() *FooListPMultiGetter {
+	return &FooListPMultiGetter{
 		store: s,
 		keys:  []fooListPParam{},
 	}
 }
 
-func (g *fooListPMultiGetter) GetM(ID string) *fooListPMultiGetter {
+func (g *FooListPMultiGetter) GetM(ID string) *FooListPMultiGetter {
 	g.keys = append(g.keys, fooListPParam{ID: ID})
 	return g
 }
 
-func (g *fooListPMultiGetter) Do(ctx context.Context) (*fooListPQuerySet, error) {
+func (g *FooListPMultiGetter) Do(ctx context.Context) (*fooListPQuerySet, error) {
 	qs := &fooListPQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -3669,7 +3669,7 @@ func (g *fooListPMultiGetter) Do(ctx context.Context) (*fooListPQuerySet, error)
 	return qs, err
 }
 
-func (g *fooListPMultiGetter) pipeDo(ctx context.Context) (map[string][]*model.Foo, error) {
+func (g *FooListPMultiGetter) pipeDo(ctx context.Context) (map[string][]*model.Foo, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooListPPromise)
 	for _, k := range g.keys {
@@ -3700,8 +3700,8 @@ func (g *fooListPMultiGetter) pipeDo(ctx context.Context) (map[string][]*model.F
 	return results, nil
 }
 
-func (s *fooListPCache) GetM(ID string) *fooListPMultiGetter {
-	return &fooListPMultiGetter{
+func (s *fooListPCache) GetM(ID string) *FooListPMultiGetter {
+	return &FooListPMultiGetter{
 		store: s,
 		keys:  []fooListPParam{{ID: ID}},
 	}
@@ -4007,7 +4007,7 @@ func (p *fooMapSParam) pid() string {
 	return id
 }
 
-type fooMapSMultiGetter struct {
+type FooMapSMultiGetter struct {
 	store *fooMapSCache
 	keys  []fooMapSParam
 }
@@ -4037,19 +4037,19 @@ func (q *fooMapSQuerySet) GetSlice() []map[model.Foo]model.Bar {
 	return results
 }
 
-func (s *fooMapSCache) MGetter() *fooMapSMultiGetter {
-	return &fooMapSMultiGetter{
+func (s *fooMapSCache) MGetter() *FooMapSMultiGetter {
+	return &FooMapSMultiGetter{
 		store: s,
 		keys:  []fooMapSParam{},
 	}
 }
 
-func (g *fooMapSMultiGetter) GetM(ID string) *fooMapSMultiGetter {
+func (g *FooMapSMultiGetter) GetM(ID string) *FooMapSMultiGetter {
 	g.keys = append(g.keys, fooMapSParam{ID: ID})
 	return g
 }
 
-func (g *fooMapSMultiGetter) Do(ctx context.Context) (*fooMapSQuerySet, error) {
+func (g *FooMapSMultiGetter) Do(ctx context.Context) (*fooMapSQuerySet, error) {
 	qs := &fooMapSQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -4071,7 +4071,7 @@ func (g *fooMapSMultiGetter) Do(ctx context.Context) (*fooMapSQuerySet, error) {
 	return qs, err
 }
 
-func (g *fooMapSMultiGetter) pipeDo(ctx context.Context) (map[string]map[model.Foo]model.Bar, error) {
+func (g *FooMapSMultiGetter) pipeDo(ctx context.Context) (map[string]map[model.Foo]model.Bar, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*FooMapSPromise)
 	for _, k := range g.keys {
@@ -4102,8 +4102,8 @@ func (g *fooMapSMultiGetter) pipeDo(ctx context.Context) (map[string]map[model.F
 	return results, nil
 }
 
-func (s *fooMapSCache) GetM(ID string) *fooMapSMultiGetter {
-	return &fooMapSMultiGetter{
+func (s *fooMapSCache) GetM(ID string) *FooMapSMultiGetter {
+	return &FooMapSMultiGetter{
 		store: s,
 		keys:  []fooMapSParam{{ID: ID}},
 	}
@@ -4409,7 +4409,7 @@ func (p *simpleFlightParam) pid() string {
 	return id
 }
 
-type simpleFlightMultiGetter struct {
+type SimpleFlightMultiGetter struct {
 	store *simpleFlightCache
 	keys  []simpleFlightParam
 }
@@ -4439,19 +4439,19 @@ func (q *simpleFlightQuerySet) GetSlice() []string {
 	return results
 }
 
-func (s *simpleFlightCache) MGetter() *simpleFlightMultiGetter {
-	return &simpleFlightMultiGetter{
+func (s *simpleFlightCache) MGetter() *SimpleFlightMultiGetter {
+	return &SimpleFlightMultiGetter{
 		store: s,
 		keys:  []simpleFlightParam{},
 	}
 }
 
-func (g *simpleFlightMultiGetter) GetM(ID string) *simpleFlightMultiGetter {
+func (g *SimpleFlightMultiGetter) GetM(ID string) *SimpleFlightMultiGetter {
 	g.keys = append(g.keys, simpleFlightParam{ID: ID})
 	return g
 }
 
-func (g *simpleFlightMultiGetter) Do(ctx context.Context) (*simpleFlightQuerySet, error) {
+func (g *SimpleFlightMultiGetter) Do(ctx context.Context) (*simpleFlightQuerySet, error) {
 	qs := &simpleFlightQuerySet{}
 	var keys []string
 	for _, k := range g.keys {
@@ -4473,7 +4473,7 @@ func (g *simpleFlightMultiGetter) Do(ctx context.Context) (*simpleFlightQuerySet
 	return qs, err
 }
 
-func (g *simpleFlightMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
+func (g *SimpleFlightMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*SimpleFlightPromise)
 	for _, k := range g.keys {
@@ -4504,8 +4504,8 @@ func (g *simpleFlightMultiGetter) pipeDo(ctx context.Context) (map[string]string
 	return results, nil
 }
 
-func (s *simpleFlightCache) GetM(ID string) *simpleFlightMultiGetter {
-	return &simpleFlightMultiGetter{
+func (s *simpleFlightCache) GetM(ID string) *SimpleFlightMultiGetter {
+	return &SimpleFlightMultiGetter{
 		store: s,
 		keys:  []simpleFlightParam{{ID: ID}},
 	}

@@ -292,7 +292,7 @@ func (p *{{$NodeName}}Param) pid() string {
 	return id
 }
 
-type {{$NodeName}}MultiGetter struct {
+type {{.Name}}MultiGetter struct {
 	store *{{$NodeName}}Cache
 	keys  []{{$NodeName}}Param
 }
@@ -321,19 +321,19 @@ func (q *{{$NodeName}}QuerySet) GetSlice() []{{.Type}} {
 	return results
 }
 
-func (s *{{$NodeName}}Cache) MGetter() *{{$NodeName}}MultiGetter {
-	return &{{$NodeName}}MultiGetter{
+func (s *{{$NodeName}}Cache) MGetter() *{{.Name}}MultiGetter {
+	return &{{.Name}}MultiGetter{
 		store: s,
 		keys:  []{{$NodeName}}Param{},
 	}
 }
 
-func (g *{{$NodeName}}MultiGetter) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$NodeName}}MultiGetter {
+func (g *{{.Name}}MultiGetter) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{.Name}}MultiGetter {
 	g.keys = append(g.keys, {{$NodeName}}Param{{"{"}}{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}"}})
 	return g
 }
 
-func (g *{{$NodeName}}MultiGetter) Do(ctx context.Context) (*{{$NodeName}}QuerySet, error) {
+func (g *{{.Name}}MultiGetter) Do(ctx context.Context) (*{{$NodeName}}QuerySet, error) {
      qs := &{{$NodeName}}QuerySet{}
      var keys []string
      for _, k := range g.keys {
@@ -355,7 +355,7 @@ func (g *{{$NodeName}}MultiGetter) Do(ctx context.Context) (*{{$NodeName}}QueryS
 	return qs, err
 }
 
-func (g *{{$NodeName}}MultiGetter) pipeDo(ctx context.Context) (map[string]{{.Type}}, error) {
+func (g *{{.Name}}MultiGetter) pipeDo(ctx context.Context) (map[string]{{.Type}}, error) {
 	pipeline := cacheme.NewPipeline(g.store.client.Redis())
 	ps := make(map[string]*{{.Name}}Promise)
 	for _, k := range g.keys {
@@ -386,8 +386,8 @@ func (g *{{$NodeName}}MultiGetter) pipeDo(ctx context.Context) (map[string]{{.Ty
 	return results, nil
 }
 
-func (s *{{$NodeName}}Cache) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$NodeName}}MultiGetter {
-	return &{{$NodeName}}MultiGetter{
+func (s *{{$NodeName}}Cache) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{.Name}}MultiGetter {
+	return &{{.Name}}MultiGetter{
 		store: s,
 		keys:  []{{$NodeName}}Param{{"{{"}}{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}}"}},
 	}

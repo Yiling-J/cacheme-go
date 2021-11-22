@@ -1,6 +1,7 @@
 # cacheme - Redis Caching Framework For Go
 ![example workflow](https://github.com/Yiling-J/cacheme-go/actions/workflows/go.yml/badge.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/Yiling-J/cacheme-go?style=flat-square)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go#orm)
 
 [English](README.md) | [中文](README_zh.md)
 

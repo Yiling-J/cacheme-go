@@ -73,8 +73,14 @@ More details [here](#schema-definition)
 ## Store Generation
 Run code generation from the root directory of the project as follows:
 ```console
+# this will use default schema path ./cacheme/schema
 go run github.com/Yiling-J/cacheme-go/cmd generate
 ```
+Or you can use custom schema path:
+```console
+go run github.com/Yiling-J/cacheme-go/cmd generate ./yours/cacheme/schema
+```
+
 This produces the following files:
 ```console {12-20}
 └── cacheme
@@ -251,7 +257,7 @@ Each schema has 5 fields:
 	store.GetM("foo").GetM("bar").GetM("xyz").Do(ctx)
 	Store.GetM("bar").GetM("foo").GetM("xyz").Do(ctx)
 	```
-	- `GetP`: not support. 
+	- `GetP`: not support.
 - `Version` callable can help you managing version better. Example:
 	```go
 	// models.go
@@ -301,7 +307,7 @@ client.SetLogger(logger)
 ```
 #### Operation Types:
  - **HIT**: cache hit to redis, if you enable singleflight, grouped requests only log once.
- - **MISS**: cache miss 
+ - **MISS**: cache miss
  - **FETCH**: fetch data from fetcher
 
 ## Performance

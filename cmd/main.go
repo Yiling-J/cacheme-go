@@ -34,11 +34,11 @@ package main
 
 import "os"
 import cm "github.com/Yiling-J/cacheme-go"
-import schema "{{.}}/cacheme/schema"
+import schema "{{.pkg}}"
 
 
 func main() {
-    err := cm.SchemaToStore("{{.}}/cacheme/schema", schema.Prefix, schema.Stores, true)
+    err := cm.SchemaToStore("{{.pkg}}", "{{.path}}", schema.Prefix, schema.Stores, true)
     if err != nil {
         os.Exit(1)
     }
@@ -163,14 +163,18 @@ func generateCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			cfg := &packages.Config{Mode: packages.NeedFiles | packages.NeedSyntax}
-			pkgs, err := packages.Load(cfg, ".")
+			cfg := &packages.Config{Mode: packages.NeedName}
+			path := "./cacheme/schema"
+			if len(args) > 0 {
+				path = args[0]
+			}
+			pkgs, err := packages.Load(cfg, path)
 			if err != nil {
 				fmt.Println("Can't load package: ", err)
 				os.Exit(1)
 			}
 
-			pkg := pkgs[0].ID
+			pkg := pkgs[0].PkgPath
 
 			tmpl, err := template.New("generare").Parse(generateCode)
 			if err != nil {
@@ -179,7 +183,7 @@ func generateCmd() *cobra.Command {
 			}
 
 			b := &bytes.Buffer{}
-			err = tmpl.Execute(b, pkg)
+			err = tmpl.Execute(b, map[string]string{"pkg": pkg, "path": path})
 
 			if err != nil {
 				fmt.Println(err)

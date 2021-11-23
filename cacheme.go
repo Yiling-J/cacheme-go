@@ -9,6 +9,7 @@ import (
 	"go/format"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -162,7 +163,7 @@ func getVersionInfo(i interface{}) (*versionInfo, error) {
 	return &versionInfo{typ: "func"}, nil
 }
 
-func SchemaToStore(schemaPath string, prefix string, stores []*StoreSchema, save bool) error {
+func SchemaToStore(pkg string, path string, prefix string, stores []*StoreSchema, save bool) error {
 	patternMapping := make(map[string]bool)
 	nameMapping := make(map[string]bool)
 	var info []storeInfo
@@ -216,7 +217,7 @@ func SchemaToStore(schemaPath string, prefix string, stores []*StoreSchema, save
 		}
 	}
 
-	imports := []string{schemaPath}
+	imports := []string{pkg}
 	for k := range importMap {
 		imports = append(imports, k)
 	}
@@ -254,7 +255,13 @@ func SchemaToStore(schemaPath string, prefix string, stores []*StoreSchema, save
 		return nil
 	}
 
-	if err = ioutil.WriteFile("cacheme/store.go", buf, 0644); err != nil { //nolint
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	dir := filepath.Dir(abs)
+	if err = ioutil.WriteFile(dir+"/store.go", buf, 0644); err != nil { //nolint
 		fmt.Println("writing go file:", err)
 		return err
 	}

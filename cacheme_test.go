@@ -27,7 +27,7 @@ func TestSchemaToStore(t *testing.T) {
 		},
 	}
 
-	err := cacheme.SchemaToStore("fmt", "", stores, false)
+	err := cacheme.SchemaToStore("./", "fmt", "", stores, false)
 	require.NotNil(t, err)
 
 	// duplicate name
@@ -47,7 +47,7 @@ func TestSchemaToStore(t *testing.T) {
 			TTL:     5 * time.Minute,
 		},
 	}
-	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	err = cacheme.SchemaToStore("./", "fmt", "", stores, false)
 	require.NotNil(t, err)
 
 	// ok
@@ -67,7 +67,7 @@ func TestSchemaToStore(t *testing.T) {
 			TTL:     5 * time.Minute,
 		},
 	}
-	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	err = cacheme.SchemaToStore("./", "fmt", "", stores, false)
 	require.Nil(t, err)
 
 	// not valid version
@@ -80,7 +80,7 @@ func TestSchemaToStore(t *testing.T) {
 			TTL:     5 * time.Minute,
 		},
 	}
-	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	err = cacheme.SchemaToStore("./", "fmt", "", stores, false)
 	require.NotNil(t, err)
 
 	// not valid version
@@ -93,7 +93,7 @@ func TestSchemaToStore(t *testing.T) {
 			TTL:     5 * time.Minute,
 		},
 	}
-	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	err = cacheme.SchemaToStore("./", "fmt", "", stores, false)
 	require.NotNil(t, err)
 
 	// not valid version
@@ -106,7 +106,7 @@ func TestSchemaToStore(t *testing.T) {
 			TTL:     5 * time.Minute,
 		},
 	}
-	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	err = cacheme.SchemaToStore("", "fmt", "", stores, false)
 	require.NotNil(t, err)
 
 	// not valid version
@@ -119,7 +119,7 @@ func TestSchemaToStore(t *testing.T) {
 			TTL:     5 * time.Minute,
 		},
 	}
-	err = cacheme.SchemaToStore("fmt", "", stores, false)
+	err = cacheme.SchemaToStore("", "fmt", "", stores, false)
 	require.NotNil(t, err)
 
 }

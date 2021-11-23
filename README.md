@@ -28,11 +28,11 @@ comment, err := cacheme.CommentCacheStore.Get(c.Request().Context(), c.Param("id
 ```console
 go get github.com/Yiling-J/cacheme-go/cmd
 ```
-After installing `cacheme-go` codegen, go to the root directory of your project, and run:
+After installing `cacheme-go` codegen, go to the root directory(or the directory you think cacheme should stay) of your project, and run:
 ```console
 go run github.com/Yiling-J/cacheme-go/cmd init
 ```
-The command above will generate `cacheme` directory under root directory:
+The command above will generate `cacheme` directory under current directory:
 ```console {12-20}
 └── cacheme
     ├── fetcher
@@ -40,6 +40,7 @@ The command above will generate `cacheme` directory under root directory:
     └── schema
         └── schema.go
 ```
+It's up to you where the cacheme directory should be, just remember to use the right directory in **Store Generation** step.
 
 ## Add Schema
 Edit `schema.go` and add some schemas:

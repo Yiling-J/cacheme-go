@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"text/template"
 
 	"github.com/spf13/cobra"
@@ -156,18 +157,22 @@ func generateCmd() *cobra.Command {
 		Use:   "generate",
 		Short: "generate cache.go",
 		Run: func(cmd *cobra.Command, args []string) {
-			target := "cacheme/.gen/main.go"
-
-			if err := os.MkdirAll("cacheme/.gen", os.ModePerm); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
 			cfg := &packages.Config{Mode: packages.NeedName}
 			path := "./cacheme/schema"
 			if len(args) > 0 {
 				path = args[0]
 			}
+			abs, err := filepath.Abs(path)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			dir := filepath.Dir(abs)
+			if err := os.MkdirAll(dir+"/.gen", os.ModePerm); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			target := dir + "/.gen/main.go"
 			pkgs, err := packages.Load(cfg, path)
 			if err != nil {
 				fmt.Println("Can't load package: ", err)

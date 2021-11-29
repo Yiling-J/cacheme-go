@@ -172,6 +172,7 @@ func generateCmd() *cobra.Command {
 				fmt.Println(err)
 				os.Exit(1)
 			}
+			defer os.RemoveAll(dir + "/.gen")
 			target := dir + "/.gen/main.go"
 			pkgs, err := packages.Load(cfg, path)
 			if err != nil {
@@ -205,7 +206,6 @@ func generateCmd() *cobra.Command {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			defer os.RemoveAll("cacheme/.gen")
 
 			_, err = get("github.com/Yiling-J/cacheme-go")
 			if err != nil {

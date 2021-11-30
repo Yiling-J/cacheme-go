@@ -733,7 +733,7 @@ func TestInvalidAllLargeCluster(t *testing.T) {
 	cc := client.Redis().(*redis.ClusterClient)
 	var counter int
 	var mu sync.Mutex
-	cc.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
+	err = cc.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
 		keys, err := client.Keys(ctx, "*").Result()
 		if err != nil {
 			return err
@@ -743,11 +743,12 @@ func TestInvalidAllLargeCluster(t *testing.T) {
 		mu.Unlock()
 		return nil
 	})
+	require.Nil(t, err)
 	require.Equal(t, 1277, counter)
 	err = client.FooCacheStore.InvalidAll(ctx, "1")
 	require.Nil(t, err)
 	counter = 0
-	cc.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
+	err = cc.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
 		keys, err := client.Keys(ctx, "*").Result()
 		if err != nil {
 			return err
@@ -757,6 +758,7 @@ func TestInvalidAllLargeCluster(t *testing.T) {
 		mu.Unlock()
 		return nil
 	})
+	require.Nil(t, err)
 	require.True(t, counter < 80)
 }
 

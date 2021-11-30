@@ -182,7 +182,14 @@ func (r *RedisMemoLock) SetCache(ctx context.Context, key string, value []byte, 
 
 func (r *RedisMemoLock) AddGroup(ctx context.Context, group string, key string) error {
 	resourceID := r.prefix + ":" + key
-	return r.client.SAdd(ctx, group, resourceID).Err()
+	c, err := r.client.PFAdd(ctx, group+":hll", resourceID).Result()
+	if err != nil {
+		return err
+	}
+	if c == 1 {
+		err = r.client.LPush(ctx, group, resourceID).Err()
+	}
+	return err
 }
 
 func (r *RedisMemoLock) Wait(ctx context.Context, key string) ([]byte, error) {

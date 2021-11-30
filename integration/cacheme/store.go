@@ -288,11 +288,11 @@ func (s *fixCache) Key(p *fixParam) (string, error) {
 }
 
 func (s *fixCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *fixCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *fixCache) AddMemoLock() error {
@@ -674,11 +674,11 @@ func (s *simpleCache) Key(p *simpleParam) (string, error) {
 }
 
 func (s *simpleCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *simpleCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *simpleCache) AddMemoLock() error {
@@ -1076,11 +1076,11 @@ func (s *simpleMultiCache) Key(p *simpleMultiParam) (string, error) {
 }
 
 func (s *simpleMultiCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *simpleMultiCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *simpleMultiCache) AddMemoLock() error {
@@ -1510,11 +1510,11 @@ func (s *fooMapCache) Key(p *fooMapParam) (string, error) {
 }
 
 func (s *fooMapCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *fooMapCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *fooMapCache) AddMemoLock() error {
@@ -1912,11 +1912,11 @@ func (s *fooCache) Key(p *fooParam) (string, error) {
 }
 
 func (s *fooCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *fooCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *fooCache) AddMemoLock() error {
@@ -2314,11 +2314,11 @@ func (s *barCache) Key(p *barParam) (string, error) {
 }
 
 func (s *barCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *barCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *barCache) AddMemoLock() error {
@@ -2716,11 +2716,11 @@ func (s *fooPCache) Key(p *fooPParam) (string, error) {
 }
 
 func (s *fooPCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *fooPCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *fooPCache) AddMemoLock() error {
@@ -3118,11 +3118,11 @@ func (s *fooListCache) Key(p *fooListParam) (string, error) {
 }
 
 func (s *fooListCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *fooListCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *fooListCache) AddMemoLock() error {
@@ -3520,11 +3520,11 @@ func (s *fooListPCache) Key(p *fooListPParam) (string, error) {
 }
 
 func (s *fooListPCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *fooListPCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *fooListPCache) AddMemoLock() error {
@@ -3922,11 +3922,11 @@ func (s *fooMapSCache) Key(p *fooMapSParam) (string, error) {
 }
 
 func (s *fooMapSCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *fooMapSCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *fooMapSCache) AddMemoLock() error {
@@ -4324,11 +4324,11 @@ func (s *simpleFlightCache) Key(p *simpleFlightParam) (string, error) {
 }
 
 func (s *simpleFlightCache) Group() string {
-	return "cacheme" + ":group:" + s.tag + ":v" + s.Version()
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *simpleFlightCache) versionedGroup(v string) string {
-	return "cacheme" + ":group:" + s.tag + ":v" + v
+	return "cacheme" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *simpleFlightCache) AddMemoLock() error {

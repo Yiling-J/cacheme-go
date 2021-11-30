@@ -198,11 +198,11 @@ func (s *{{$NodeName}}Cache) Key(p *{{$NodeName}}Param) (string, error) {
 }
 
 func (s *{{$NodeName}}Cache) Group() string {
-	return "{{$Prefix}}" + ":group:" + s.tag + ":v" + s.Version()
+	return "{{$Prefix}}" + ":meta:group:" + s.tag + ":v" + s.Version()
 }
 
 func (s *{{$NodeName}}Cache) versionedGroup(v string) string {
-	return "{{$Prefix}}" + ":group:" + s.tag + ":v" + v
+	return "{{$Prefix}}" + ":meta:group:" + s.tag + ":v" + v
 }
 
 func (s *{{$NodeName}}Cache) AddMemoLock() error {

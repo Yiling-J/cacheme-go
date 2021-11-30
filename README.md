@@ -228,7 +228,7 @@ err := client.SimpleCacheStore.Update(ctx, "foo")
 ```
 #### Invalid all keys: `InvalidAll`
 **Warning:** This method is implemented using Redis `HyperLogLog` + `List` for memory efficiency, but inaccurate(according to Redis, standard error of 0.81%).
-Intend usage for this method is: you update store version, then calling this method to clean legacy cache.
+Intend use of this method is: you update store version, then calling this method to clean legacy cache.
 ```go
 // invalid all version 1 simple cache
 client.SimpleCacheStore.InvalidAll(ctx, "1")

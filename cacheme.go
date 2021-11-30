@@ -298,53 +298,38 @@ func InvalidAllCluster(ctx context.Context, group string, client RedisClient) er
 	clusterClient := client.(*redis.ClusterClient)
 
 	iter := clusterClient.SScan(ctx, group, 0, "", 200).Iterator()
-	invalids := make(map[string][]string)
 	counter := 0
+	var keys []string
 	for iter.Next(ctx) {
-
 		key := iter.Val()
-		node, err := clusterClient.MasterForKey(ctx, key)
-		if err != nil {
-			return err
-		}
-
-		addr := node.Options().Addr
-
-		if v, ok := invalids[addr]; ok {
-			v = append(v, key)
-			invalids[addr] = v
-
-		} else {
-			invalids[addr] = []string{key}
-		}
+		keys = append(keys, key)
 		counter++
-
 		if counter == 600 {
-
-			for _, v := range invalids {
-
-				err := clusterClient.Unlink(ctx, v...).Err()
-				if err != nil {
-					fmt.Println(err)
-				}
+			pipeline := clusterClient.Pipeline()
+			for _, key := range keys {
+				pipeline.Unlink(ctx, key)
 			}
-			invalids = make(map[string][]string)
+			_, err := pipeline.Exec(ctx)
+			if err != nil {
+				return err
+			}
 			counter = 0
+			keys = []string{}
 		}
 	}
 
 	if counter > 0 {
-		for _, v := range invalids {
-
-			err := clusterClient.Unlink(ctx, v...).Err()
-			if err != nil {
-				fmt.Println(err)
-			}
+		pipeline := clusterClient.Pipeline()
+		for _, key := range keys {
+			pipeline.Unlink(ctx, key)
 		}
-		err := clusterClient.Unlink(ctx, group).Err()
-		return err
+		_, err := pipeline.Exec(ctx)
+		if err != nil {
+			return err
+		}
 	}
-	return nil
+	err := clusterClient.Unlink(ctx, group).Err()
+	return err
 }
 
 func Marshal(v interface{}) ([]byte, error) {

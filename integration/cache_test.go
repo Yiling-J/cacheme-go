@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -740,4 +741,69 @@ func TestMGetSingleFlight(t *testing.T) {
 	hit, ok = logger.counter["SimpleFlight>simple:flight:y:v1>HIT"]
 	require.True(t, ok)
 	require.True(t, hit < 10)
+}
+
+func TestInvalidAllLarge(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	defer ResetCounter()
+	ctx := context.TODO()
+	getter := client.FooCacheStore.MGetter()
+	for i := 0; i < 1275; i++ {
+		_ = getter.GetM(strconv.Itoa(i))
+	}
+	_, err := getter.Do(ctx)
+	require.Nil(t, err)
+	keys, err := client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	require.Equal(t, 1276, len(keys))
+	err = client.FooCacheStore.InvalidAll(ctx, "1")
+	require.Nil(t, err)
+	keys, err = client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	require.True(t, len(keys) == 0)
+}
+
+func TestInvalidAllLargeCluster(t *testing.T) {
+	fetcher.Setup()
+	client := CachemeCluster()
+	defer CleanRedisCluster()
+	defer ResetCounter()
+	ctx := context.TODO()
+	getter := client.FooCacheStore.MGetter()
+	for i := 0; i < 1275; i++ {
+		_ = getter.GetM(strconv.Itoa(i))
+	}
+	_, err := getter.Do(ctx)
+	require.Nil(t, err)
+
+	cc := client.Redis().(*redis.ClusterClient)
+	var counter int
+	var mu sync.Mutex
+	cc.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
+		keys, err := client.Keys(ctx, "*").Result()
+		if err != nil {
+			return err
+		}
+		mu.Lock()
+		counter += len(keys)
+		mu.Unlock()
+		return nil
+	})
+	require.Equal(t, 1276, counter)
+	err = client.FooCacheStore.InvalidAll(ctx, "1")
+	require.Nil(t, err)
+	counter = 0
+	cc.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
+		keys, err := client.Keys(ctx, "*").Result()
+		if err != nil {
+			return err
+		}
+		mu.Lock()
+		counter += len(keys)
+		mu.Unlock()
+		return nil
+	})
+	require.True(t, counter == 0)
 }

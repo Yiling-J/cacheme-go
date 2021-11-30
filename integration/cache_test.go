@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -503,9 +502,8 @@ func TestCacheKey(t *testing.T) {
 	keys, err := client.Redis().Keys(ctx, "*").Result()
 	require.Nil(t, err)
 	expected := []string{
-		"cacheme:simple:foo:v1",            // cache key
-		"cacheme:meta:group:Simple:v1",     // group key
-		"cacheme:meta:group:Simple:v1:hll", // hll key
+		"cacheme:simple:foo:v1",   // cache key
+		"cacheme:group:Simple:v1", // group key
 	}
 	require.ElementsMatch(t, keys, expected)
 	CleanRedis()
@@ -515,9 +513,8 @@ func TestCacheKey(t *testing.T) {
 	keys, err = client.Redis().Keys(ctx, "*").Result()
 	require.Nil(t, err)
 	expected = []string{
-		"cacheme:simplem:a:b:c:v1",              // cache key
-		"cacheme:meta:group:SimpleMulti:v1",     // group key
-		"cacheme:meta:group:SimpleMulti:v1:hll", // hll key
+		"cacheme:simplem:a:b:c:v1",     // cache key
+		"cacheme:group:SimpleMulti:v1", // group key
 	}
 	require.ElementsMatch(t, keys, expected)
 	CleanRedis()
@@ -527,9 +524,8 @@ func TestCacheKey(t *testing.T) {
 	keys, err = client.Redis().Keys(ctx, "*").Result()
 	require.Nil(t, err)
 	expected = []string{
-		"cacheme:simplem:b:c:a:v1",              // cache key
-		"cacheme:meta:group:SimpleMulti:v1",     // group key
-		"cacheme:meta:group:SimpleMulti:v1:hll", // hll key
+		"cacheme:simplem:b:c:a:v1",     // cache key
+		"cacheme:group:SimpleMulti:v1", // group key
 	}
 	require.ElementsMatch(t, keys, expected)
 }
@@ -576,9 +572,8 @@ func TestCacheVersion(t *testing.T) {
 	keys, err := client.Redis().Keys(ctx, "*").Result()
 	require.Nil(t, err)
 	expected := []string{
-		"cacheme:bar:foo:info:v6",       // cache key
-		"cacheme:meta:group:Bar:v6",     // group key
-		"cacheme:meta:group:Bar:v6:hll", // hll key
+		"cacheme:bar:foo:info:v6", // cache key
+		"cacheme:group:Bar:v6",    // group key
 	}
 	require.ElementsMatch(t, keys, expected)
 	CleanRedis()
@@ -590,9 +585,8 @@ func TestCacheVersion(t *testing.T) {
 	keys, err = client.Redis().Keys(ctx, "*").Result()
 	require.Nil(t, err)
 	expected = []string{
-		"cacheme:bar:foo:info:v12",       // cache key
-		"cacheme:meta:group:Bar:v12",     // group key
-		"cacheme:meta:group:Bar:v12:hll", // hll key
+		"cacheme:bar:foo:info:v12", // cache key
+		"cacheme:group:Bar:v12",    // group key
 	}
 	require.ElementsMatch(t, keys, expected)
 }
@@ -693,73 +687,6 @@ func TestGetMCluster(t *testing.T) {
 	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
 	getmDuplicateTest(t, client)
 	require.Equal(t, 2, fetcher.SimpleMultiCacheStoreCounter)
-}
-
-func TestInvalidAllLarge(t *testing.T) {
-	fetcher.Setup()
-	client := Cacheme()
-	defer CleanRedis()
-	defer ResetCounter()
-	ctx := context.TODO()
-	getter := client.FooCacheStore.MGetter()
-	for i := 0; i < 1275; i++ {
-		_ = getter.GetM(strconv.Itoa(i))
-	}
-	_, err := getter.Do(ctx)
-	require.Nil(t, err)
-	keys, err := client.Redis().Keys(ctx, "*").Result()
-	require.Nil(t, err)
-	require.Equal(t, 1277, len(keys))
-	err = client.FooCacheStore.InvalidAll(ctx, "1")
-	require.Nil(t, err)
-	keys, err = client.Redis().Keys(ctx, "*").Result()
-	require.Nil(t, err)
-	require.True(t, len(keys) < 80)
-}
-
-func TestInvalidAllLargeCluster(t *testing.T) {
-	fetcher.Setup()
-	client := CachemeCluster()
-	defer CleanRedisCluster()
-	defer ResetCounter()
-	ctx := context.TODO()
-	getter := client.FooCacheStore.MGetter()
-	for i := 0; i < 1275; i++ {
-		_ = getter.GetM(strconv.Itoa(i))
-	}
-	_, err := getter.Do(ctx)
-	require.Nil(t, err)
-
-	cc := client.Redis().(*redis.ClusterClient)
-	var counter int
-	var mu sync.Mutex
-	err = cc.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
-		keys, err := client.Keys(ctx, "*").Result()
-		if err != nil {
-			return err
-		}
-		mu.Lock()
-		counter += len(keys)
-		mu.Unlock()
-		return nil
-	})
-	require.Nil(t, err)
-	require.Equal(t, 1277, counter)
-	err = client.FooCacheStore.InvalidAll(ctx, "1")
-	require.Nil(t, err)
-	counter = 0
-	err = cc.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
-		keys, err := client.Keys(ctx, "*").Result()
-		if err != nil {
-			return err
-		}
-		mu.Lock()
-		counter += len(keys)
-		mu.Unlock()
-		return nil
-	})
-	require.Nil(t, err)
-	require.True(t, counter < 80)
 }
 
 func TestMGetSingleFlight(t *testing.T) {

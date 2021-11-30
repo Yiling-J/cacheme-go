@@ -269,48 +269,82 @@ func SchemaToStore(pkg string, path string, prefix string, stores []*StoreSchema
 }
 
 func InvalidAll(ctx context.Context, group string, client RedisClient) error {
-	for {
-		keys, err := client.LRange(ctx, group, 0, 499).Result()
-		if len(keys) == 0 {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		err = client.LTrim(ctx, group, 500, -1).Err()
-		if err != nil {
-			return err
-		}
-		err = client.Unlink(ctx, keys...).Err()
-		if err != nil {
-			return err
+	iter := client.SScan(ctx, group, 0, "", 200).Iterator()
+	invalids := []string{}
+	for iter.Next(ctx) {
+		invalids = append(invalids, iter.Val())
+		if len(invalids) == 600 {
+			err := client.Unlink(ctx, invalids...).Err()
+			if err != nil {
+				fmt.Println(err)
+			}
+			invalids = []string{}
 		}
 	}
+
+	if len(invalids) > 0 {
+		err := client.Unlink(ctx, invalids...).Err()
+		if err != nil {
+			return err
+		}
+		err = client.Unlink(ctx, group).Err()
+		return err
+	}
+	return nil
 }
 
 func InvalidAllCluster(ctx context.Context, group string, client RedisClient) error {
+
 	clusterClient := client.(*redis.ClusterClient)
-	for {
-		keys, err := client.LRange(ctx, group, 0, 499).Result()
-		if len(keys) == 0 {
-			return nil
-		}
+
+	iter := clusterClient.SScan(ctx, group, 0, "", 200).Iterator()
+	invalids := make(map[string][]string)
+	counter := 0
+	for iter.Next(ctx) {
+
+		key := iter.Val()
+		node, err := clusterClient.MasterForKey(ctx, key)
 		if err != nil {
 			return err
 		}
-		err = client.LTrim(ctx, group, 500, -1).Err()
-		if err != nil {
-			return err
+
+		addr := node.Options().Addr
+
+		if v, ok := invalids[addr]; ok {
+			v = append(v, key)
+			invalids[addr] = v
+
+		} else {
+			invalids[addr] = []string{key}
 		}
-		pipeline := clusterClient.Pipeline()
-		for _, key := range keys {
-			pipeline.Unlink(ctx, key)
-		}
-		_, err = pipeline.Exec(ctx)
-		if err != nil {
-			return err
+		counter++
+
+		if counter == 600 {
+
+			for _, v := range invalids {
+
+				err := clusterClient.Unlink(ctx, v...).Err()
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+			invalids = make(map[string][]string)
+			counter = 0
 		}
 	}
+
+	if counter > 0 {
+		for _, v := range invalids {
+
+			err := clusterClient.Unlink(ctx, v...).Err()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		err := clusterClient.Unlink(ctx, group).Err()
+		return err
+	}
+	return nil
 }
 
 func Marshal(v interface{}) ([]byte, error) {

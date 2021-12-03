@@ -89,6 +89,7 @@ type StoreSchema struct {
 	Vars         []string
 	TTL          time.Duration
 	Singleflight bool
+	MetaData     bool
 }
 
 type storeInfo struct {

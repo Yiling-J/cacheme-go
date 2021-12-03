@@ -64,6 +64,7 @@ var (
 			Version:      1,
 			TTL:          5 * time.Minute,
 			Singleflight: false,
+			MetaData: false,
 		},
 	}
 )
@@ -227,6 +228,7 @@ err := client.SimpleCacheStore.Invalid(ctx, "foo")
 err := client.SimpleCacheStore.Update(ctx, "foo")
 ```
 #### Invalid all keys: `InvalidAll`
+Only works when you enable `MetaData` option in schema.
 ```go
 // invalid all version 1 simple cache
 client.SimpleCacheStore.InvalidAll(ctx, "1")
@@ -246,6 +248,7 @@ Each schema has 5 fields:
 - **Version** - version interface, can be `string`, `int`, or callable `func() string`.
 - **TTL** - redis ttl using go time.
 - **Singleflight** - bool, if `true`, concurrent requests to **same key** on **same executable** will call Redis only once
+- **MetaData** - bool, if `true`, each store will save all generated keys to a Redis Set, so `InvalidAll` method can work.
 
 #### Notes:
 - Duplicate name/key is not allowed.
@@ -312,14 +315,10 @@ client.SetLogger(logger)
  - **FETCH**: fetch data from fetcher
 
 ## Performance
-Parallel benchmarks of Cacheme alongside [go-redis/cache](https://github.com/go-redis/cache):
+Parallel benchmarks of Cacheme
  - params: 10000/1000000 hits, 10 keys loop, TTL 10s, `SetParallelism(100)`, singleflight on
- - go-redis/cache without local cache
 ```
 cpu: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
 BenchmarkCachemeGetParallel-12    	   10000	    198082 ns/op
-BenchmarkCacheGetParallel-12    	   10000	    189766 ns/op
 BenchmarkCachemeGetParallel-12    	 1000000	      9501 ns/op
-BenchmarkCacheGetParallel-12    	 1000000	      4323 ns/op
 ```
-At 10000 hits, result almost same. At 1000000 hits, go-redis/cache is about 2 times faster than Cacheme. but keep in mind, go-redis/cache is based on singleflight **only**, not truly distributed. This bench case is single executable, not the real load case.

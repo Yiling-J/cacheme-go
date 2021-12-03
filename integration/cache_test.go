@@ -574,7 +574,6 @@ func TestCacheVersion(t *testing.T) {
 	require.Nil(t, err)
 	expected := []string{
 		"cacheme:bar:foo:info:v6", // cache key
-		"cacheme:group:Bar:v6",    // group key
 	}
 	require.ElementsMatch(t, keys, expected)
 	CleanRedis()
@@ -587,7 +586,33 @@ func TestCacheVersion(t *testing.T) {
 	require.Nil(t, err)
 	expected = []string{
 		"cacheme:bar:foo:info:v12", // cache key
-		"cacheme:group:Bar:v12",    // group key
+	}
+	require.ElementsMatch(t, keys, expected)
+	model.BarVersion = 6
+}
+
+func TestMetaData(t *testing.T) {
+	fetcher.Setup()
+	client := Cacheme()
+	defer CleanRedis()
+	defer ResetCounter()
+	ctx := context.TODO()
+
+	_, err := client.BarCacheStore.Get(ctx, "foo")
+	require.Nil(t, err)
+	keys, err := client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected := []string{
+		"cacheme:bar:foo:info:v6", // cache key
+	}
+	require.ElementsMatch(t, keys, expected)
+	// InvalidAll has no effect, because metadata is false
+	err = client.BarCacheStore.InvalidAll(ctx, "6")
+	require.Nil(t, err)
+	keys, err = client.Redis().Keys(ctx, "*").Result()
+	require.Nil(t, err)
+	expected = []string{
+		"cacheme:bar:foo:info:v6", // cache key
 	}
 	require.ElementsMatch(t, keys, expected)
 }

@@ -90,15 +90,20 @@ This produces the following files:
     │   └── fetcher.go
     ├── schema
     │   └── schema.go
+    ├── store
+    │   ├── base.go
+    │   └── simple.go
     └── store.go
 ```
-`store.go` is generated based on schemas in `schema.go`. Adding more schemas and run `generate` again.
+If you update schema, just run `generate` again.
 
 ## Add Fetcher
 Each cache store should provide a fetch function in `fetcher.go`:
 ```go
+import "your/cacheme/store"
+
 func Setup() {
-	cacheme.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
+	store.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
 		return ID, nil
 	}
 }
@@ -151,7 +156,7 @@ import cachemego "github.com/Yiling-J/cacheme-go"
 
 pipeline := cachemego.NewPipeline(client.Redis())
 ids := []string{"1", "2", "3", "4"}
-var ps []*cacheme.SimplePromise
+var ps []*store.SimplePromise
 for _, i := range ids {
 	promise, err := client.SimpleCacheStore.GetP(ctx, pipeline, i)
 	ps = append(ps, promise)
@@ -174,8 +179,8 @@ import cachemego "github.com/Yiling-J/cacheme-go"
 pipeline := cachemego.NewPipeline(client.Redis())
 
 ids := []string{"1", "2", "3", "4"}
-var ps []*cacheme.SimplePromise // cache string
-var psf []*cacheme.FooPromise // cache model.Foo struct
+var ps []*store.SimplePromise // cache string
+var psf []*store.FooPromise // cache model.Foo struct
 for _, i := range ids {
 	promise, err := client.SimpleCacheStore.GetP(ctx, pipeline, i)
 	ps = append(ps, promise)

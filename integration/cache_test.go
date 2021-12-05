@@ -12,6 +12,7 @@ import (
 	cachemeo "github.com/Yiling-J/cacheme-go"
 	"github.com/Yiling-J/cacheme-go/integration/cacheme"
 	"github.com/Yiling-J/cacheme-go/integration/cacheme/fetcher"
+	"github.com/Yiling-J/cacheme-go/integration/cacheme/store"
 	"github.com/Yiling-J/cacheme-go/integration/model"
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func (c *CounterLogger) Log(store string, key string, op string) {
 	c.mu.Unlock()
 }
 
-func Cacheme() *cacheme.Client {
+func Cacheme() *store.Client {
 	return cacheme.New(redis.NewClient(
 		&redis.Options{
 			Addr:     "localhost:6379",
@@ -42,7 +43,7 @@ func Cacheme() *cacheme.Client {
 	))
 }
 
-func CachemeCluster() *cacheme.Client {
+func CachemeCluster() *store.Client {
 	client := redis.NewClusterClient(
 		&redis.ClusterOptions{
 			Addrs: []string{
@@ -109,7 +110,7 @@ func ResetCounter() {
 	fetcher.SimpleMultiCacheStoreCounter = 0
 }
 
-func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
+func CacheTypeTest(t *testing.T, client *store.Client, cleanFunc func()) {
 	tests := []struct {
 		name             string
 		id               string
@@ -156,21 +157,6 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			defer cleanFunc()
 			defer ResetCounter()
 			ctx := context.Background()
-
-			stores := []cachemeo.CacheStore{
-				client.SimpleCacheStore,
-				client.SimpleFlightCacheStore,
-				client.FooMapCacheStore,
-				client.FooPCacheStore,
-				client.FooCacheStore,
-				client.FooListCacheStore,
-				client.FooListPCacheStore,
-			}
-
-			for _, store := range stores {
-				err := store.AddMemoLock()
-				require.Nil(t, err)
-			}
 
 			// test get without cache
 			r0, err := client.FixCacheStore.Get(ctx)
@@ -328,7 +314,7 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			fetcher.SimpleCacheStoreCounter = 0
 			pipeline := cachemeo.NewPipeline(client.Redis())
 			ids := []string{"1", "2", "3", "4"}
-			var ps []*cacheme.SimplePromise
+			var ps []*store.SimplePromise
 			for _, i := range ids {
 				promise, err := client.SimpleCacheStore.GetP(ctx, pipeline, i)
 				require.Nil(t, err)
@@ -352,8 +338,8 @@ func CacheTypeTest(t *testing.T, client *cacheme.Client, cleanFunc func()) {
 			fetcher.FooCacheStoreCounter = 0
 			pipeline = cachemeo.NewPipeline(client.Redis())
 			ids = []string{"5", "6", "7", "8"}
-			var pss []*cacheme.SimplePromise
-			var psf []*cacheme.FooPromise
+			var pss []*store.SimplePromise
+			var psf []*store.FooPromise
 
 			for _, i := range ids {
 				if i == "5" || i == "7" {
@@ -422,7 +408,7 @@ func TestCluster(t *testing.T) {
 	CacheTypeTest(t, client, CleanRedisCluster)
 }
 
-func CacheConcurrencyTestCase(t *testing.T, client *cacheme.Client, cleanFunc func()) {
+func CacheConcurrencyTestCase(t *testing.T, client *store.Client, cleanFunc func()) {
 	defer cleanFunc()
 	defer ResetCounter()
 
@@ -642,7 +628,7 @@ func TestMultiParams(t *testing.T) {
 	}
 }
 
-func getmTest(t *testing.T, client *cacheme.Client) {
+func getmTest(t *testing.T, client *store.Client) {
 	ctx := context.TODO()
 
 	qs, err := client.SimpleMultiCacheStore.
@@ -665,7 +651,7 @@ func getmTest(t *testing.T, client *cacheme.Client) {
 	require.NotNil(t, err)
 }
 
-func getmDuplicateTest(t *testing.T, client *cacheme.Client) {
+func getmDuplicateTest(t *testing.T, client *store.Client) {
 	ctx := context.TODO()
 	qs, err := client.SimpleMultiCacheStore.
 		GetM("a", "b", "c").

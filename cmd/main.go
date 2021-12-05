@@ -35,11 +35,11 @@ package main
 
 import "os"
 import cm "github.com/Yiling-J/cacheme-go"
-import schema "{{.pkg}}"
+import "{{.pkg}}"
 
 
 func main() {
-    err := cm.SchemaToStore("{{.pkg}}", "{{.path}}", schema.Prefix, schema.Stores, true)
+    err := cm.SchemaToStore("{{.pkg}}", "{{.path}}", schema.Prefix, schema.Stores)
     if err != nil {
         os.Exit(1)
     }
@@ -52,21 +52,6 @@ package fetcher
 
 func Setup() {}
 `
-
-func get(target string) (string, error) {
-	cmd := exec.Command("go", "get", target)
-	stderr := bytes.NewBuffer(nil)
-	stdout := bytes.NewBuffer(nil)
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
-	if err := cmd.Run(); err != nil {
-		fmt.Println(stdout.String())
-		fmt.Println(stderr.String())
-		return "", fmt.Errorf("get error: %s", stderr)
-	}
-	fmt.Println(stdout.String())
-	return stdout.String(), nil
-}
 
 func run(target string) (string, error) {
 	cmd := exec.Command("go", "run", target)
@@ -203,18 +188,6 @@ func generateCmd() *cobra.Command {
 			}
 			// nolint: gosec
 			if err := ioutil.WriteFile(target, buf, 0644); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			_, err = get("github.com/Yiling-J/cacheme-go")
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			_, err = get("github.com/go-redis/redis/v8")
-			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}

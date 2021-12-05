@@ -17,6 +17,7 @@ import (
 	"github.com/Yiling-J/cacheme-go/integration/model"
 )
 
+// FooListPCache is the store for FooListP
 type FooListPCache struct {
 	Fetch         func(ctx context.Context, ID string) ([]*model.Foo, error)
 	tag           string
@@ -28,6 +29,7 @@ type FooListPCache struct {
 	metadata      bool
 }
 
+// FooListPPromise is the promise for FooListP
 type FooListPPromise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -37,7 +39,7 @@ type FooListPPromise struct {
 	ctx          context.Context
 }
 
-func (p *FooListPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+func (p *FooListPPromise) waitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t []*model.Foo
 	memo := p.store.memo
@@ -91,6 +93,7 @@ func (p *FooListPPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID 
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *FooListPPromise) Result() ([]*model.Foo, error) {
 	return p.result, p.error
 }
@@ -154,6 +157,7 @@ func (s *FooListPCache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *FooListPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooListPPromise, error) {
 	param := &fooListPParam{}
 
@@ -175,11 +179,12 @@ func (s *FooListPCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID 
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 		pp, key, ID)
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *FooListPCache) Get(ctx context.Context, ID string) ([]*model.Foo, error) {
 
 	param := &fooListPParam{}
@@ -219,11 +224,13 @@ type FooListPMultiGetter struct {
 	keys  []fooListPParam
 }
 
+// FooListPQuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type FooListPQuerySet struct {
 	keys    []string
 	results map[string][]*model.Foo
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *FooListPQuerySet) Get(ID string) ([]*model.Foo, error) {
 	param := fooListPParam{
 
@@ -236,6 +243,7 @@ func (q *FooListPQuerySet) Get(ID string) ([]*model.Foo, error) {
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *FooListPQuerySet) GetSlice() [][]*model.Foo {
 	var results [][]*model.Foo
 	for _, k := range q.keys {
@@ -244,6 +252,7 @@ func (q *FooListPQuerySet) GetSlice() [][]*model.Foo {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *FooListPCache) MGetter() *FooListPMultiGetter {
 	return &FooListPMultiGetter{
 		store: s,
@@ -251,11 +260,13 @@ func (s *FooListPCache) MGetter() *FooListPMultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *FooListPMultiGetter) GetM(ID string) *FooListPMultiGetter {
 	g.keys = append(g.keys, fooListPParam{ID: ID})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *FooListPMultiGetter) Do(ctx context.Context) (*FooListPQuerySet, error) {
 	qs := &FooListPQuerySet{}
 	var keys []string
@@ -309,6 +320,7 @@ func (g *FooListPMultiGetter) pipeDo(ctx context.Context) (map[string][]*model.F
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *FooListPCache) GetM(ID string) *FooListPMultiGetter {
 	return &FooListPMultiGetter{
 		store: s,
@@ -373,6 +385,7 @@ func (s *FooListPCache) get(ctx context.Context, ID string) ([]*model.Foo, error
 	return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *FooListPCache) Update(ctx context.Context, ID string) error {
 
 	param := &fooListPParam{}
@@ -398,6 +411,7 @@ func (s *FooListPCache) Update(ctx context.Context, ID string) error {
 	return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *FooListPCache) Invalid(ctx context.Context, ID string) error {
 
 	param := &fooListPParam{}
@@ -412,6 +426,7 @@ func (s *FooListPCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *FooListPCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {

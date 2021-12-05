@@ -15,6 +15,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// SimpleFlightCache is the store for SimpleFlight
 type SimpleFlightCache struct {
 	Fetch         func(ctx context.Context, ID string) (string, error)
 	tag           string
@@ -26,6 +27,7 @@ type SimpleFlightCache struct {
 	metadata      bool
 }
 
+// SimpleFlightPromise is the promise for SimpleFlight
 type SimpleFlightPromise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -35,7 +37,7 @@ type SimpleFlightPromise struct {
 	ctx          context.Context
 }
 
-func (p *SimpleFlightPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+func (p *SimpleFlightPromise) waitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t string
 	memo := p.store.memo
@@ -89,6 +91,7 @@ func (p *SimpleFlightPromise) WaitExecute(cp *cacheme.CachePipeline, key string,
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *SimpleFlightPromise) Result() (string, error) {
 	return p.result, p.error
 }
@@ -152,6 +155,7 @@ func (s *SimpleFlightCache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *SimpleFlightCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*SimpleFlightPromise, error) {
 	param := &simpleFlightParam{}
 
@@ -173,11 +177,12 @@ func (s *SimpleFlightCache) GetP(ctx context.Context, pp *cacheme.CachePipeline,
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 		pp, key, ID)
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *SimpleFlightCache) Get(ctx context.Context, ID string) (string, error) {
 
 	param := &simpleFlightParam{}
@@ -217,11 +222,13 @@ type SimpleFlightMultiGetter struct {
 	keys  []simpleFlightParam
 }
 
+// SimpleFlightQuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type SimpleFlightQuerySet struct {
 	keys    []string
 	results map[string]string
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *SimpleFlightQuerySet) Get(ID string) (string, error) {
 	param := simpleFlightParam{
 
@@ -234,6 +241,7 @@ func (q *SimpleFlightQuerySet) Get(ID string) (string, error) {
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *SimpleFlightQuerySet) GetSlice() []string {
 	var results []string
 	for _, k := range q.keys {
@@ -242,6 +250,7 @@ func (q *SimpleFlightQuerySet) GetSlice() []string {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *SimpleFlightCache) MGetter() *SimpleFlightMultiGetter {
 	return &SimpleFlightMultiGetter{
 		store: s,
@@ -249,11 +258,13 @@ func (s *SimpleFlightCache) MGetter() *SimpleFlightMultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *SimpleFlightMultiGetter) GetM(ID string) *SimpleFlightMultiGetter {
 	g.keys = append(g.keys, simpleFlightParam{ID: ID})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *SimpleFlightMultiGetter) Do(ctx context.Context) (*SimpleFlightQuerySet, error) {
 	qs := &SimpleFlightQuerySet{}
 	var keys []string
@@ -307,6 +318,7 @@ func (g *SimpleFlightMultiGetter) pipeDo(ctx context.Context) (map[string]string
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *SimpleFlightCache) GetM(ID string) *SimpleFlightMultiGetter {
 	return &SimpleFlightMultiGetter{
 		store: s,
@@ -371,6 +383,7 @@ func (s *SimpleFlightCache) get(ctx context.Context, ID string) (string, error) 
 	return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *SimpleFlightCache) Update(ctx context.Context, ID string) error {
 
 	param := &simpleFlightParam{}
@@ -396,6 +409,7 @@ func (s *SimpleFlightCache) Update(ctx context.Context, ID string) error {
 	return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *SimpleFlightCache) Invalid(ctx context.Context, ID string) error {
 
 	param := &simpleFlightParam{}
@@ -410,6 +424,7 @@ func (s *SimpleFlightCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *SimpleFlightCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {

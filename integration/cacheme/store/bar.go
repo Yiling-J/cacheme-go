@@ -17,6 +17,7 @@ import (
 	"github.com/Yiling-J/cacheme-go/integration/model"
 )
 
+// BarCache is the store for Bar
 type BarCache struct {
 	Fetch         func(ctx context.Context, ID string) (model.Bar, error)
 	tag           string
@@ -28,6 +29,7 @@ type BarCache struct {
 	metadata      bool
 }
 
+// BarPromise is the promise for Bar
 type BarPromise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -37,7 +39,7 @@ type BarPromise struct {
 	ctx          context.Context
 }
 
-func (p *BarPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+func (p *BarPromise) waitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t model.Bar
 	memo := p.store.memo
@@ -91,6 +93,7 @@ func (p *BarPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID strin
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *BarPromise) Result() (model.Bar, error) {
 	return p.result, p.error
 }
@@ -154,6 +157,7 @@ func (s *BarCache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *BarCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*BarPromise, error) {
 	param := &barParam{}
 
@@ -175,11 +179,12 @@ func (s *BarCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID strin
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 		pp, key, ID)
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *BarCache) Get(ctx context.Context, ID string) (model.Bar, error) {
 
 	param := &barParam{}
@@ -219,11 +224,13 @@ type BarMultiGetter struct {
 	keys  []barParam
 }
 
+// BarQuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type BarQuerySet struct {
 	keys    []string
 	results map[string]model.Bar
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *BarQuerySet) Get(ID string) (model.Bar, error) {
 	param := barParam{
 
@@ -236,6 +243,7 @@ func (q *BarQuerySet) Get(ID string) (model.Bar, error) {
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *BarQuerySet) GetSlice() []model.Bar {
 	var results []model.Bar
 	for _, k := range q.keys {
@@ -244,6 +252,7 @@ func (q *BarQuerySet) GetSlice() []model.Bar {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *BarCache) MGetter() *BarMultiGetter {
 	return &BarMultiGetter{
 		store: s,
@@ -251,11 +260,13 @@ func (s *BarCache) MGetter() *BarMultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *BarMultiGetter) GetM(ID string) *BarMultiGetter {
 	g.keys = append(g.keys, barParam{ID: ID})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *BarMultiGetter) Do(ctx context.Context) (*BarQuerySet, error) {
 	qs := &BarQuerySet{}
 	var keys []string
@@ -309,6 +320,7 @@ func (g *BarMultiGetter) pipeDo(ctx context.Context) (map[string]model.Bar, erro
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *BarCache) GetM(ID string) *BarMultiGetter {
 	return &BarMultiGetter{
 		store: s,
@@ -373,6 +385,7 @@ func (s *BarCache) get(ctx context.Context, ID string) (model.Bar, error) {
 	return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *BarCache) Update(ctx context.Context, ID string) error {
 
 	param := &barParam{}
@@ -398,6 +411,7 @@ func (s *BarCache) Update(ctx context.Context, ID string) error {
 	return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *BarCache) Invalid(ctx context.Context, ID string) error {
 
 	param := &barParam{}
@@ -412,6 +426,7 @@ func (s *BarCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *BarCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {

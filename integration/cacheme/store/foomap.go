@@ -15,6 +15,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// FooMapCache is the store for FooMap
 type FooMapCache struct {
 	Fetch         func(ctx context.Context, ID string) (map[string]string, error)
 	tag           string
@@ -26,6 +27,7 @@ type FooMapCache struct {
 	metadata      bool
 }
 
+// FooMapPromise is the promise for FooMap
 type FooMapPromise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -35,7 +37,7 @@ type FooMapPromise struct {
 	ctx          context.Context
 }
 
-func (p *FooMapPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+func (p *FooMapPromise) waitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t map[string]string
 	memo := p.store.memo
@@ -89,6 +91,7 @@ func (p *FooMapPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *FooMapPromise) Result() (map[string]string, error) {
 	return p.result, p.error
 }
@@ -152,6 +155,7 @@ func (s *FooMapCache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *FooMapCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooMapPromise, error) {
 	param := &fooMapParam{}
 
@@ -173,11 +177,12 @@ func (s *FooMapCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 		pp, key, ID)
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *FooMapCache) Get(ctx context.Context, ID string) (map[string]string, error) {
 
 	param := &fooMapParam{}
@@ -217,11 +222,13 @@ type FooMapMultiGetter struct {
 	keys  []fooMapParam
 }
 
+// FooMapQuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type FooMapQuerySet struct {
 	keys    []string
 	results map[string]map[string]string
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *FooMapQuerySet) Get(ID string) (map[string]string, error) {
 	param := fooMapParam{
 
@@ -234,6 +241,7 @@ func (q *FooMapQuerySet) Get(ID string) (map[string]string, error) {
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *FooMapQuerySet) GetSlice() []map[string]string {
 	var results []map[string]string
 	for _, k := range q.keys {
@@ -242,6 +250,7 @@ func (q *FooMapQuerySet) GetSlice() []map[string]string {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *FooMapCache) MGetter() *FooMapMultiGetter {
 	return &FooMapMultiGetter{
 		store: s,
@@ -249,11 +258,13 @@ func (s *FooMapCache) MGetter() *FooMapMultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *FooMapMultiGetter) GetM(ID string) *FooMapMultiGetter {
 	g.keys = append(g.keys, fooMapParam{ID: ID})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *FooMapMultiGetter) Do(ctx context.Context) (*FooMapQuerySet, error) {
 	qs := &FooMapQuerySet{}
 	var keys []string
@@ -307,6 +318,7 @@ func (g *FooMapMultiGetter) pipeDo(ctx context.Context) (map[string]map[string]s
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *FooMapCache) GetM(ID string) *FooMapMultiGetter {
 	return &FooMapMultiGetter{
 		store: s,
@@ -371,6 +383,7 @@ func (s *FooMapCache) get(ctx context.Context, ID string) (map[string]string, er
 	return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *FooMapCache) Update(ctx context.Context, ID string) error {
 
 	param := &fooMapParam{}
@@ -396,6 +409,7 @@ func (s *FooMapCache) Update(ctx context.Context, ID string) error {
 	return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *FooMapCache) Invalid(ctx context.Context, ID string) error {
 
 	param := &fooMapParam{}
@@ -410,6 +424,7 @@ func (s *FooMapCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *FooMapCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {

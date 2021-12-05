@@ -15,6 +15,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// FixCache is the store for Fix
 type FixCache struct {
 	Fetch         func(ctx context.Context) (string, error)
 	tag           string
@@ -26,6 +27,7 @@ type FixCache struct {
 	metadata      bool
 }
 
+// FixPromise is the promise for Fix
 type FixPromise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -35,7 +37,7 @@ type FixPromise struct {
 	ctx          context.Context
 }
 
-func (p *FixPromise) WaitExecute(cp *cacheme.CachePipeline, key string) {
+func (p *FixPromise) waitExecute(cp *cacheme.CachePipeline, key string) {
 	defer cp.Wg.Done()
 	var t string
 	memo := p.store.memo
@@ -89,6 +91,7 @@ func (p *FixPromise) WaitExecute(cp *cacheme.CachePipeline, key string) {
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *FixPromise) Result() (string, error) {
 	return p.result, p.error
 }
@@ -152,6 +155,7 @@ func (s *FixCache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *FixCache) GetP(ctx context.Context, pp *cacheme.CachePipeline) (*FixPromise, error) {
 	param := &fixParam{}
 
@@ -171,11 +175,12 @@ func (s *FixCache) GetP(ctx context.Context, pp *cacheme.CachePipeline) (*FixPro
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 		pp, key)
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *FixCache) Get(ctx context.Context) (string, error) {
 
 	param := &fixParam{}
@@ -210,11 +215,13 @@ type FixMultiGetter struct {
 	keys  []fixParam
 }
 
+// FixQuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type FixQuerySet struct {
 	keys    []string
 	results map[string]string
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *FixQuerySet) Get() (string, error) {
 	param := fixParam{}
 	v, ok := q.results[param.pid()]
@@ -224,6 +231,7 @@ func (q *FixQuerySet) Get() (string, error) {
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *FixQuerySet) GetSlice() []string {
 	var results []string
 	for _, k := range q.keys {
@@ -232,6 +240,7 @@ func (q *FixQuerySet) GetSlice() []string {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *FixCache) MGetter() *FixMultiGetter {
 	return &FixMultiGetter{
 		store: s,
@@ -239,11 +248,13 @@ func (s *FixCache) MGetter() *FixMultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *FixMultiGetter) GetM() *FixMultiGetter {
 	g.keys = append(g.keys, fixParam{})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *FixMultiGetter) Do(ctx context.Context) (*FixQuerySet, error) {
 	qs := &FixQuerySet{}
 	var keys []string
@@ -297,6 +308,7 @@ func (g *FixMultiGetter) pipeDo(ctx context.Context) (map[string]string, error) 
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *FixCache) GetM() *FixMultiGetter {
 	return &FixMultiGetter{
 		store: s,
@@ -359,6 +371,7 @@ func (s *FixCache) get(ctx context.Context) (string, error) {
 	return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *FixCache) Update(ctx context.Context) error {
 
 	param := &fixParam{}
@@ -382,6 +395,7 @@ func (s *FixCache) Update(ctx context.Context) error {
 	return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *FixCache) Invalid(ctx context.Context) error {
 
 	param := &fixParam{}
@@ -394,6 +408,7 @@ func (s *FixCache) Invalid(ctx context.Context) error {
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *FixCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {

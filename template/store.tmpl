@@ -24,6 +24,7 @@ import (
 
 {{$Name := .Name}}
 {{$NameH := .Name | FirstLower}}
+// {{$Name}}Cache is the store for {{$Name}}
 type {{$Name}}Cache struct {
      Fetch func(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error)
      tag string
@@ -35,6 +36,7 @@ type {{$Name}}Cache struct {
      metadata bool
 }
 
+// {{$Name}}Promise is the promise for {{$Name}}
 type {{$Name}}Promise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -44,7 +46,7 @@ type {{$Name}}Promise struct {
 	ctx          context.Context
 }
 
-func (p *{{$Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {
+func (p *{{$Name}}Promise) waitExecute(cp *cacheme.CachePipeline, key string, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) {
 	defer cp.Wg.Done()
 	var t {{.Type}}
 	memo := p.store.memo
@@ -98,6 +100,7 @@ func (p *{{$Name}}Promise) WaitExecute(cp *cacheme.CachePipeline, key string, {{
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *{{$Name}}Promise) Result() ({{.Type}}, error) {
 	return p.result, p.error
 }
@@ -161,6 +164,7 @@ func (s *{{$Name}}Cache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *{{$Name}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) (*{{$Name}}Promise, error) {
      	param := &{{$NameH}}Param{}
      	{{range .Vars}}
@@ -183,11 +187,12 @@ func (s *{{$Name}}Cache) GetP(ctx context.Context, pp *cacheme.CachePipeline, {{
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 	pp, key, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}{{end}})
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *{{$Name}}Cache) Get(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
 
      param := &{{$NameH}}Param{}
@@ -235,11 +240,13 @@ type {{$Name}}MultiGetter struct {
 	keys  []{{$NameH}}Param
 }
 
+// {{$Name}}QuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type {{$Name}}QuerySet struct {
 	keys    []string
 	results map[string]{{.Type}}
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *{{$Name}}QuerySet) Get({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) ({{.Type}}, error) {
 	param := {{$NameH}}Param{
 	     {{range .Vars}}
@@ -251,6 +258,7 @@ func (q *{{$Name}}QuerySet) Get({{ range $index, $element := .Vars}}{{if $index}
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *{{$Name}}QuerySet) GetSlice() []{{.Type}} {
 	var results []{{.Type}}
 	for _, k := range q.keys {
@@ -259,6 +267,7 @@ func (q *{{$Name}}QuerySet) GetSlice() []{{.Type}} {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *{{$Name}}Cache) MGetter() *{{.Name}}MultiGetter {
 	return &{{.Name}}MultiGetter{
 		store: s,
@@ -266,11 +275,13 @@ func (s *{{$Name}}Cache) MGetter() *{{.Name}}MultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *{{$Name}}MultiGetter) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$Name}}MultiGetter {
 	g.keys = append(g.keys, {{$NameH}}Param{{"{"}}{{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}}:{{.}}{{end}}{{"}"}})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *{{$Name}}MultiGetter) Do(ctx context.Context) (*{{$Name}}QuerySet, error) {
      qs := &{{$Name}}QuerySet{}
      var keys []string
@@ -324,6 +335,7 @@ func (g *{{$Name}}MultiGetter) pipeDo(ctx context.Context) (map[string]{{.Type}}
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *{{$Name}}Cache) GetM({{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) *{{$Name}}MultiGetter {
 	return &{{$Name}}MultiGetter{
 		store: s,
@@ -390,6 +402,7 @@ func (s *{{$Name}}Cache) get(ctx context.Context, {{ range $index, $element := .
      return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *{{$Name}}Cache) Update(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) error {
 
      param := &{{$NameH}}Param{}
@@ -416,6 +429,7 @@ func (s *{{$Name}}Cache) Update(ctx context.Context, {{ range $index, $element :
     return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *{{$Name}}Cache) Invalid(ctx context.Context, {{ range $index, $element := .Vars}}{{if $index}},{{end}}{{.}} string{{end}}) error {
 
      param := &{{$NameH}}Param{}
@@ -431,6 +445,7 @@ func (s *{{$Name}}Cache) Invalid(ctx context.Context, {{ range $index, $element 
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *{{$Name}}Cache) InvalidAll(ctx context.Context, version string) error {
      group := s.versionedGroup(version)
      if s.client.cluster {

@@ -15,6 +15,7 @@ const (
 	Fetch = "FETCH"
 )
 
+// Client is the cacheme client for all stores.
 type Client struct {
 	FixCacheStore *FixCache
 
@@ -43,14 +44,17 @@ type Client struct {
 	logger  cacheme.Logger
 }
 
+// Redis return the current redis client.
 func (c *Client) Redis() cacheme.RedisClient {
 	return c.redis
 }
 
+// SetLogger set logger interface for current client.
 func (c *Client) SetLogger(l cacheme.Logger) {
 	c.logger = l
 }
 
+// NewPipeline returns a new cacheme pipeline.
 func (c *Client) NewPipeline() *cacheme.CachePipeline {
 	return cacheme.NewPipeline(c.redis)
 }
@@ -103,6 +107,7 @@ func init() {
 
 }
 
+// New create a new cacheme client with given redis client.
 func New(redis cacheme.RedisClient) *Client {
 	client := &Client{redis: redis}
 
@@ -143,6 +148,7 @@ func New(redis cacheme.RedisClient) *Client {
 	return client
 }
 
+// NewCluster create a new cacheme cluster client with given redis client.
 func NewCluster(redis cacheme.RedisClient) *Client {
 	client := &Client{redis: redis, cluster: true}
 

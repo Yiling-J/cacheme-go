@@ -7,10 +7,12 @@ import (
 	"github.com/Yiling-J/cacheme-go/integration/cacheme/store"
 )
 
+// New create a new cacheme client with given redis client.
 func New(redis cacheme.RedisClient) *store.Client {
 	return store.New(redis)
 }
 
+// NewCluster create a new cacheme cluster client with given redis client.
 func NewCluster(redis cacheme.RedisClient) *store.Client {
 	return store.NewCluster(redis)
 }

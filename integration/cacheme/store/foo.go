@@ -17,6 +17,7 @@ import (
 	"github.com/Yiling-J/cacheme-go/integration/model"
 )
 
+// FooCache is the store for Foo
 type FooCache struct {
 	Fetch         func(ctx context.Context, ID string) (model.Foo, error)
 	tag           string
@@ -28,6 +29,7 @@ type FooCache struct {
 	metadata      bool
 }
 
+// FooPromise is the promise for Foo
 type FooPromise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -37,7 +39,7 @@ type FooPromise struct {
 	ctx          context.Context
 }
 
-func (p *FooPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+func (p *FooPromise) waitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t model.Foo
 	memo := p.store.memo
@@ -91,6 +93,7 @@ func (p *FooPromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID strin
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *FooPromise) Result() (model.Foo, error) {
 	return p.result, p.error
 }
@@ -154,6 +157,7 @@ func (s *FooCache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *FooCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*FooPromise, error) {
 	param := &fooParam{}
 
@@ -175,11 +179,12 @@ func (s *FooCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID strin
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 		pp, key, ID)
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *FooCache) Get(ctx context.Context, ID string) (model.Foo, error) {
 
 	param := &fooParam{}
@@ -219,11 +224,13 @@ type FooMultiGetter struct {
 	keys  []fooParam
 }
 
+// FooQuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type FooQuerySet struct {
 	keys    []string
 	results map[string]model.Foo
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *FooQuerySet) Get(ID string) (model.Foo, error) {
 	param := fooParam{
 
@@ -236,6 +243,7 @@ func (q *FooQuerySet) Get(ID string) (model.Foo, error) {
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *FooQuerySet) GetSlice() []model.Foo {
 	var results []model.Foo
 	for _, k := range q.keys {
@@ -244,6 +252,7 @@ func (q *FooQuerySet) GetSlice() []model.Foo {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *FooCache) MGetter() *FooMultiGetter {
 	return &FooMultiGetter{
 		store: s,
@@ -251,11 +260,13 @@ func (s *FooCache) MGetter() *FooMultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *FooMultiGetter) GetM(ID string) *FooMultiGetter {
 	g.keys = append(g.keys, fooParam{ID: ID})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *FooMultiGetter) Do(ctx context.Context) (*FooQuerySet, error) {
 	qs := &FooQuerySet{}
 	var keys []string
@@ -309,6 +320,7 @@ func (g *FooMultiGetter) pipeDo(ctx context.Context) (map[string]model.Foo, erro
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *FooCache) GetM(ID string) *FooMultiGetter {
 	return &FooMultiGetter{
 		store: s,
@@ -373,6 +385,7 @@ func (s *FooCache) get(ctx context.Context, ID string) (model.Foo, error) {
 	return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *FooCache) Update(ctx context.Context, ID string) error {
 
 	param := &fooParam{}
@@ -398,6 +411,7 @@ func (s *FooCache) Update(ctx context.Context, ID string) error {
 	return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *FooCache) Invalid(ctx context.Context, ID string) error {
 
 	param := &fooParam{}
@@ -412,6 +426,7 @@ func (s *FooCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *FooCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {

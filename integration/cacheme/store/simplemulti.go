@@ -15,6 +15,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// SimpleMultiCache is the store for SimpleMulti
 type SimpleMultiCache struct {
 	Fetch         func(ctx context.Context, Foo string, Bar string, ID string) (string, error)
 	tag           string
@@ -26,6 +27,7 @@ type SimpleMultiCache struct {
 	metadata      bool
 }
 
+// SimpleMultiPromise is the promise for SimpleMulti
 type SimpleMultiPromise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -35,7 +37,7 @@ type SimpleMultiPromise struct {
 	ctx          context.Context
 }
 
-func (p *SimpleMultiPromise) WaitExecute(cp *cacheme.CachePipeline, key string, Foo string, Bar string, ID string) {
+func (p *SimpleMultiPromise) waitExecute(cp *cacheme.CachePipeline, key string, Foo string, Bar string, ID string) {
 	defer cp.Wg.Done()
 	var t string
 	memo := p.store.memo
@@ -89,6 +91,7 @@ func (p *SimpleMultiPromise) WaitExecute(cp *cacheme.CachePipeline, key string, 
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *SimpleMultiPromise) Result() (string, error) {
 	return p.result, p.error
 }
@@ -152,6 +155,7 @@ func (s *SimpleMultiCache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *SimpleMultiCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, Foo string, Bar string, ID string) (*SimpleMultiPromise, error) {
 	param := &simpleMultiParam{}
 
@@ -177,11 +181,12 @@ func (s *SimpleMultiCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, 
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 		pp, key, Foo, Bar, ID)
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *SimpleMultiCache) Get(ctx context.Context, Foo string, Bar string, ID string) (string, error) {
 
 	param := &simpleMultiParam{}
@@ -233,11 +238,13 @@ type SimpleMultiMultiGetter struct {
 	keys  []simpleMultiParam
 }
 
+// SimpleMultiQuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type SimpleMultiQuerySet struct {
 	keys    []string
 	results map[string]string
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *SimpleMultiQuerySet) Get(Foo string, Bar string, ID string) (string, error) {
 	param := simpleMultiParam{
 
@@ -254,6 +261,7 @@ func (q *SimpleMultiQuerySet) Get(Foo string, Bar string, ID string) (string, er
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *SimpleMultiQuerySet) GetSlice() []string {
 	var results []string
 	for _, k := range q.keys {
@@ -262,6 +270,7 @@ func (q *SimpleMultiQuerySet) GetSlice() []string {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *SimpleMultiCache) MGetter() *SimpleMultiMultiGetter {
 	return &SimpleMultiMultiGetter{
 		store: s,
@@ -269,11 +278,13 @@ func (s *SimpleMultiCache) MGetter() *SimpleMultiMultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *SimpleMultiMultiGetter) GetM(Foo string, Bar string, ID string) *SimpleMultiMultiGetter {
 	g.keys = append(g.keys, simpleMultiParam{Foo: Foo, Bar: Bar, ID: ID})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *SimpleMultiMultiGetter) Do(ctx context.Context) (*SimpleMultiQuerySet, error) {
 	qs := &SimpleMultiQuerySet{}
 	var keys []string
@@ -327,6 +338,7 @@ func (g *SimpleMultiMultiGetter) pipeDo(ctx context.Context) (map[string]string,
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *SimpleMultiCache) GetM(Foo string, Bar string, ID string) *SimpleMultiMultiGetter {
 	return &SimpleMultiMultiGetter{
 		store: s,
@@ -395,6 +407,7 @@ func (s *SimpleMultiCache) get(ctx context.Context, Foo string, Bar string, ID s
 	return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *SimpleMultiCache) Update(ctx context.Context, Foo string, Bar string, ID string) error {
 
 	param := &simpleMultiParam{}
@@ -424,6 +437,7 @@ func (s *SimpleMultiCache) Update(ctx context.Context, Foo string, Bar string, I
 	return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *SimpleMultiCache) Invalid(ctx context.Context, Foo string, Bar string, ID string) error {
 
 	param := &simpleMultiParam{}
@@ -442,6 +456,7 @@ func (s *SimpleMultiCache) Invalid(ctx context.Context, Foo string, Bar string, 
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *SimpleMultiCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {

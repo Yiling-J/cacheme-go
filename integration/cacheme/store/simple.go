@@ -15,6 +15,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// SimpleCache is the store for Simple
 type SimpleCache struct {
 	Fetch         func(ctx context.Context, ID string) (string, error)
 	tag           string
@@ -26,6 +27,7 @@ type SimpleCache struct {
 	metadata      bool
 }
 
+// SimplePromise is the promise for Simple
 type SimplePromise struct {
 	executed     chan bool
 	redisPromise *redis.StringCmd
@@ -35,7 +37,7 @@ type SimplePromise struct {
 	ctx          context.Context
 }
 
-func (p *SimplePromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID string) {
+func (p *SimplePromise) waitExecute(cp *cacheme.CachePipeline, key string, ID string) {
 	defer cp.Wg.Done()
 	var t string
 	memo := p.store.memo
@@ -89,6 +91,7 @@ func (p *SimplePromise) WaitExecute(cp *cacheme.CachePipeline, key string, ID st
 	p.result, p.error = t, err
 }
 
+// Result return promise result.
 func (p *SimplePromise) Result() (string, error) {
 	return p.result, p.error
 }
@@ -152,6 +155,7 @@ func (s *SimpleCache) initialized() bool {
 	return s.Fetch != nil
 }
 
+// GetP return a pipeline getter.
 func (s *SimpleCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID string) (*SimplePromise, error) {
 	param := &simpleParam{}
 
@@ -173,11 +177,12 @@ func (s *SimpleCache) GetP(ctx context.Context, pp *cacheme.CachePipeline, ID st
 	wait := cacheme.GetCachedP(ctx, pp.Pipeline, key)
 	promise.redisPromise = wait
 	pp.Wg.Add(1)
-	go promise.WaitExecute(
+	go promise.waitExecute(
 		pp, key, ID)
 	return promise, nil
 }
 
+// Get return result from store.
 func (s *SimpleCache) Get(ctx context.Context, ID string) (string, error) {
 
 	param := &simpleParam{}
@@ -217,11 +222,13 @@ type SimpleMultiGetter struct {
 	keys  []simpleParam
 }
 
+// SimpleQuerySet is a query struct, using Get to get a single element or GetSlice to get all elements.
 type SimpleQuerySet struct {
 	keys    []string
 	results map[string]string
 }
 
+// Get return single element for queryset with give params, return error if not found.
 func (q *SimpleQuerySet) Get(ID string) (string, error) {
 	param := simpleParam{
 
@@ -234,6 +241,7 @@ func (q *SimpleQuerySet) Get(ID string) (string, error) {
 	return v, nil
 }
 
+// GetSlice return all elements from queryset. Same order as input.
 func (q *SimpleQuerySet) GetSlice() []string {
 	var results []string
 	for _, k := range q.keys {
@@ -242,6 +250,7 @@ func (q *SimpleQuerySet) GetSlice() []string {
 	return results
 }
 
+// MGetter return a new multiple getter for current store.
 func (s *SimpleCache) MGetter() *SimpleMultiGetter {
 	return &SimpleMultiGetter{
 		store: s,
@@ -249,11 +258,13 @@ func (s *SimpleCache) MGetter() *SimpleMultiGetter {
 	}
 }
 
+// GetM append a new get promise to getter.
 func (g *SimpleMultiGetter) GetM(ID string) *SimpleMultiGetter {
 	g.keys = append(g.keys, simpleParam{ID: ID})
 	return g
 }
 
+// Do send all requests to redis using pipeline and get results, missing parts will call fetch function.
 func (g *SimpleMultiGetter) Do(ctx context.Context) (*SimpleQuerySet, error) {
 	qs := &SimpleQuerySet{}
 	var keys []string
@@ -307,6 +318,7 @@ func (g *SimpleMultiGetter) pipeDo(ctx context.Context) (map[string]string, erro
 	return results, nil
 }
 
+// GetM append a new get promise to getter.
 func (s *SimpleCache) GetM(ID string) *SimpleMultiGetter {
 	return &SimpleMultiGetter{
 		store: s,
@@ -371,6 +383,7 @@ func (s *SimpleCache) get(ctx context.Context, ID string) (string, error) {
 	return t, err
 }
 
+// Update call fetch function with given params and update Redis.
 func (s *SimpleCache) Update(ctx context.Context, ID string) error {
 
 	param := &simpleParam{}
@@ -396,6 +409,7 @@ func (s *SimpleCache) Update(ctx context.Context, ID string) error {
 	return err
 }
 
+// Update remove cache with given params from Redis.
 func (s *SimpleCache) Invalid(ctx context.Context, ID string) error {
 
 	param := &simpleParam{}
@@ -410,6 +424,7 @@ func (s *SimpleCache) Invalid(ctx context.Context, ID string) error {
 
 }
 
+// InvalidAll will invalid all caches match provided version from current store.
 func (s *SimpleCache) InvalidAll(ctx context.Context, version string) error {
 	group := s.versionedGroup(version)
 	if s.client.cluster {

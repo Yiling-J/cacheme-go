@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Yiling-J/cacheme-go/integration/cacheme"
+	"github.com/Yiling-J/cacheme-go/integration/cacheme/store"
 	"github.com/Yiling-J/cacheme-go/integration/model"
 )
 
@@ -26,14 +26,14 @@ var (
 
 func Setup() {
 
-	cacheme.FixCacheStore.Fetch = func(ctx context.Context) (string, error) {
+	store.FixCacheStore.Fetch = func(ctx context.Context) (string, error) {
 		mu.Lock()
 		FixCacheStoreCounter++
 		mu.Unlock()
 		return "fix", nil
 	}
 
-	cacheme.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
+	store.SimpleCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
 		mu.Lock()
 		SimpleCacheStoreCounter++
 		mu.Unlock()
@@ -47,14 +47,14 @@ func Setup() {
 		return ID + Tester, nil
 	}
 
-	cacheme.SimpleMultiCacheStore.Fetch = func(ctx context.Context, Foo, Bar, ID string) (string, error) {
+	store.SimpleMultiCacheStore.Fetch = func(ctx context.Context, Foo, Bar, ID string) (string, error) {
 		mu.Lock()
 		SimpleMultiCacheStoreCounter++
 		mu.Unlock()
 		return Foo + Bar + ID, nil
 	}
 
-	cacheme.SimpleFlightCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
+	store.SimpleFlightCacheStore.Fetch = func(ctx context.Context, ID string) (string, error) {
 		mu.Lock()
 		SimpleFlightCacheStoreCounter++
 		mu.Unlock()
@@ -68,7 +68,7 @@ func Setup() {
 		return ID + Tester, nil
 	}
 
-	cacheme.FooCacheStore.Fetch = func(ctx context.Context, ID string) (model.Foo, error) {
+	store.FooCacheStore.Fetch = func(ctx context.Context, ID string) (model.Foo, error) {
 		mu.Lock()
 		FooCacheStoreCounter++
 		mu.Unlock()
@@ -86,7 +86,7 @@ func Setup() {
 		}, nil
 	}
 
-	cacheme.FooPCacheStore.Fetch = func(ctx context.Context, ID string) (*model.Foo, error) {
+	store.FooPCacheStore.Fetch = func(ctx context.Context, ID string) (*model.Foo, error) {
 		mu.Lock()
 		FooPCacheStoreCounter++
 		mu.Unlock()
@@ -104,7 +104,7 @@ func Setup() {
 		}, nil
 	}
 
-	cacheme.FooMapCacheStore.Fetch = func(ctx context.Context, ID string) (map[string]string, error) {
+	store.FooMapCacheStore.Fetch = func(ctx context.Context, ID string) (map[string]string, error) {
 		mu.Lock()
 		FooMapCacheStoreCounter++
 		mu.Unlock()
@@ -118,7 +118,7 @@ func Setup() {
 		return map[string]string{"name": ID + Tester}, nil
 	}
 
-	cacheme.FooListCacheStore.Fetch = func(ctx context.Context, ID string) ([]model.Foo, error) {
+	store.FooListCacheStore.Fetch = func(ctx context.Context, ID string) ([]model.Foo, error) {
 		mu.Lock()
 		FooListCacheStoreCounter++
 		mu.Unlock()
@@ -134,7 +134,7 @@ func Setup() {
 			BarP: &model.Bar{Name: ID + Tester + "bar"}}}, nil
 	}
 
-	cacheme.FooListPCacheStore.Fetch = func(ctx context.Context, ID string) ([]*model.Foo, error) {
+	store.FooListPCacheStore.Fetch = func(ctx context.Context, ID string) ([]*model.Foo, error) {
 		mu.Lock()
 		FooListPCacheStoreCounter++
 		mu.Unlock()
@@ -150,7 +150,7 @@ func Setup() {
 			BarP: &model.Bar{Name: ID + Tester + "bar"}}}, nil
 	}
 
-	cacheme.BarCacheStore.Fetch = func(ctx context.Context, ID string) (model.Bar, error) {
+	store.BarCacheStore.Fetch = func(ctx context.Context, ID string) (model.Bar, error) {
 		return model.Bar{}, nil
 	}
 }

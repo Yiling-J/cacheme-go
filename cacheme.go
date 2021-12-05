@@ -32,25 +32,32 @@ type RedisClient interface {
 }
 
 type CacheStore interface {
-	Initialized() bool
-	Tag() string
-	AddMemoLock() error
 }
 
-func Check(stores []CacheStore) {
-	for _, s := range stores {
-		if !s.Initialized() {
-			fmt.Println(s.Tag() + "has no fetch function")
-		}
+func writeTo(name string, tvar templateVar, path string) error {
+	funcMap := template.FuncMap{
+		"FirstLower": firstLower,
 	}
-}
+	tmpl, err := template.New(name).Funcs(funcMap).ParseFS(
+		templateDir, fmt.Sprintf("template/%s", name),
+	)
+	if err != nil {
+		return err
+	}
+	b := &bytes.Buffer{}
+	err = tmpl.Execute(b, tvar)
+	if err != nil {
+		return err
+	}
+	var buf []byte
+	if buf, err = format.Source(b.Bytes()); err != nil {
+		fmt.Println("formating:", err)
+		fmt.Println(b.String())
+		return err
+	}
 
-func UpdateMemoLockAll(stores []CacheStore) error {
-	for _, s := range stores {
-		err := s.AddMemoLock()
-		if err != nil {
-			return err
-		}
+	if err = ioutil.WriteFile(path, buf, 0644); err != nil { //nolint
+		return err
 	}
 	return nil
 }
@@ -96,6 +103,7 @@ type storeInfo struct {
 	StoreSchema
 	Type        string
 	VersionInfo *versionInfo
+	Imports     map[string]string
 }
 
 func (s *StoreSchema) SetVars(a []string) {
@@ -164,22 +172,23 @@ func getVersionInfo(i interface{}) (*versionInfo, error) {
 	return &versionInfo{typ: "func"}, nil
 }
 
-func SchemaToStore(pkg string, path string, prefix string, stores []*StoreSchema, save bool) error {
+func SchemaToStore(pkg string, path string, prefix string, stores []*StoreSchema) error {
 	patternMapping := make(map[string]bool)
 	nameMapping := make(map[string]bool)
 	var info []storeInfo
-	importMap := make(map[string]string)
+	var baseImports = []string{pkg}
 
 	for _, s := range stores {
 		vars := []string{}
 		kt := s.Key
+		importMap := make(map[string]string)
 
 		version, err := getVersionInfo(s.Version)
 		if err != nil {
 			return err
 		}
-		if version.IsInt() {
-			importMap["strconv"] = ""
+		if len(baseImports) == 1 && version.IsInt() {
+			baseImports = append(baseImports, "strconv")
 		}
 
 		if n, ok := nameMapping[s.Name]; ok {
@@ -205,66 +214,72 @@ func SchemaToStore(pkg string, path string, prefix string, stores []*StoreSchema
 
 		t := reflect.TypeOf(s.To)
 		path := pkgPath(t)
-		info = append(info, storeInfo{
+		s := storeInfo{
 			StoreSchema: *s,
 			Type:        t.String(),
 			VersionInfo: version,
-		})
+		}
 		all := strings.Split(path, "|")
 		for _, p := range all {
 			if p != "" {
 				importMap[p] = ""
 			}
 		}
+		s.Imports = importMap
+		info = append(info, s)
 	}
 
-	imports := []string{pkg}
-	for k := range importMap {
-		imports = append(imports, k)
-	}
-
-	funcMap := template.FuncMap{
-		"FirstLower": firstLower,
-	}
-	tmpl, err := template.New("store.tmpl").Funcs(funcMap).ParseFS(templateDir, "template/store.tmpl")
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
-	b := &bytes.Buffer{}
-
-	err = tmpl.Execute(b, templateVar{
-		Stores:  info,
-		Prefix:  prefix,
-		Imports: imports,
-	})
-
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	var buf []byte
-	if buf, err = format.Source(b.Bytes()); err != nil {
-		fmt.Println("formating:", err)
-		return err
-	}
-
-	if !save {
-		fmt.Println(string(buf))
-		return nil
-	}
-
+	// prepare dir
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	dir := filepath.Dir(abs)
-	if err = ioutil.WriteFile(dir+"/store.go", buf, 0644); err != nil { //nolint
-		fmt.Println("writing go file:", err)
-		return err
+	err = os.RemoveAll(dir + "/store")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	err = os.MkdirAll(dir+"/store", os.ModePerm)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	// generate store.go
+	storePath := strings.TrimSuffix(pkg, "schema") + "store"
+	err = writeTo("client.tmpl", templateVar{
+		Prefix:  prefix,
+		Imports: []string{storePath},
+	}, dir+"/store.go")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	// generate base.go
+	err = writeTo("base.tmpl", templateVar{
+		Imports: baseImports,
+		Stores:  info,
+	}, dir+"/store/base.go")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	// generate stores
+	for _, schema := range info {
+		imports := []string{}
+		for k := range schema.Imports {
+			imports = append(imports, k)
+		}
+		fullPath := fmt.Sprintf("%s/store/%s.go", dir, strings.ToLower(schema.Name))
+		err = writeTo("store.tmpl", templateVar{
+			Stores:  []storeInfo{schema},
+			Prefix:  prefix,
+			Imports: imports,
+		}, fullPath)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

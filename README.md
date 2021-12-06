@@ -108,6 +108,7 @@ func Setup() {
 	}
 }
 ```
+**You can setup fetch functions in any place, using any pattern, not restricted to this file. Just make sure you have a fetch function when using store.**
 
 ## Use Your Stores
 

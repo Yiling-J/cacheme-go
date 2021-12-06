@@ -98,7 +98,7 @@ This produces the following files:
 If you update schema, just run `generate` again.
 
 ## Add Fetcher
-Each cache store should provide a fetch function in `fetcher.go`:
+Each cache store can provide a fetch function in `fetcher.go`, you should call this `Setup` function before create client:
 ```go
 import "your/cacheme/store"
 

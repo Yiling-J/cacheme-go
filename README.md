@@ -155,7 +155,7 @@ For each key, if not in cache, call fetch function and store data to Redis.
 ```go
 import cachemego "github.com/Yiling-J/cacheme-go"
 
-pipeline := cachemego.NewPipeline(client.Redis())
+pipeline := client.NewPipeline()
 ids := []string{"1", "2", "3", "4"}
 var ps []*store.SimplePromise
 for _, i := range ids {

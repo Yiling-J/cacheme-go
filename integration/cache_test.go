@@ -312,7 +312,7 @@ func CacheTypeTest(t *testing.T, client *store.Client, cleanFunc func()) {
 
 			// test pipeline
 			fetcher.SimpleCacheStoreCounter = 0
-			pipeline := cachemeo.NewPipeline(client.Redis())
+			pipeline := client.NewPipeline()
 			ids := []string{"1", "2", "3", "4"}
 			var ps []*store.SimplePromise
 			for _, i := range ids {

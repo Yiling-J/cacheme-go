@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	cachemeo "github.com/Yiling-J/cacheme-go"
 	"github.com/Yiling-J/cacheme-go/integration/cacheme"
 	"github.com/Yiling-J/cacheme-go/integration/cacheme/fetcher"
 	"github.com/Yiling-J/cacheme-go/integration/cacheme/store"
@@ -312,7 +311,7 @@ func CacheTypeTest(t *testing.T, client *store.Client, cleanFunc func()) {
 
 			// test pipeline
 			fetcher.SimpleCacheStoreCounter = 0
-			pipeline := cachemeo.NewPipeline(client.Redis())
+			pipeline := client.NewPipeline()
 			ids := []string{"1", "2", "3", "4"}
 			var ps []*store.SimplePromise
 			for _, i := range ids {
@@ -336,7 +335,7 @@ func CacheTypeTest(t *testing.T, client *store.Client, cleanFunc func()) {
 			// test mixed pipeline
 			fetcher.SimpleCacheStoreCounter = 0
 			fetcher.FooCacheStoreCounter = 0
-			pipeline = cachemeo.NewPipeline(client.Redis())
+			pipeline = client.NewPipeline()
 			ids = []string{"5", "6", "7", "8"}
 			var pss []*store.SimplePromise
 			var psf []*store.FooPromise

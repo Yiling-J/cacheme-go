@@ -153,9 +153,7 @@ Get multiple keys from multiple stores using pipeline.
 For each key, if not in cache, call fetch function and store data to Redis.
 - single store
 ```go
-import cachemego "github.com/Yiling-J/cacheme-go"
-
-pipeline := cachemego.NewPipeline(client.Redis())
+pipeline := client.NewPipeline()
 ids := []string{"1", "2", "3", "4"}
 var ps []*store.SimplePromise
 for _, i := range ids {
@@ -174,10 +172,8 @@ Consider using `GetM` API for single store, see `GetM` example below.
 
 - multiple stores
 ```go
-import cachemego "github.com/Yiling-J/cacheme-go"
-
 // same pipeline for different stores
-pipeline := cachemego.NewPipeline(client.Redis())
+pipeline := client.NewPipeline()
 
 ids := []string{"1", "2", "3", "4"}
 var ps []*store.SimplePromise // cache string
